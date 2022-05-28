@@ -1,11 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-np.random.seed(0)                           # Constant seed -> Constant results.
-rand_arrs = np.random.rand(10000, 50)       # Generate random arrays.
+np.random.seed(0)  # Constant seed -> Constant results.
+rand_arrs = np.random.rand(10000, 50)  # Generate random arrays.
 for arr in rand_arrs:
     i = np.random.randint(20, 30)
-    for ind in range(i-5, i+6):
+    for ind in range(i - 5, i + 6):
         arr[ind] = arr[ind] * 0.1
 
 plt.figure()
@@ -22,7 +22,6 @@ plt.legend()
 plt.show()
 
 
-
 def generate_synth_data(N: int = 10000, T: int = 50):
     np.random.seed(0)  # Constant seed -> Constant results.
     rand_arrs = np.random.rand(10000, 50)  # Generate random arrays.
@@ -36,10 +35,3 @@ def generate_synth_data(N: int = 10000, T: int = 50):
     test = [arr[8000:10000] for arr in rand_arrs]
 
     return train, validation, test
-
-
-
-
-
-
-
