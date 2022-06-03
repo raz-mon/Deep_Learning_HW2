@@ -26,7 +26,7 @@ def generate_synth_data(N, T):
 
     # data = torch.tensor(rand_arrs).view(len(rand_arrs), len(rand_arrs[0]), 1)
     data = rand_arrs
-    # Todo: Make sure data is centered and normalized.
+    # Todo: Make sure data is centered and normalized. I think it is not so by definition in the assignment.
 
     train = torch.tensor(data[:int(N * 0.6), :]).float()
     validation = torch.tensor(data[int(N * 0.6):int(N * 0.8), :]).float()
