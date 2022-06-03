@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import torch
 
 
-def generate_synth_data(N, T):
+def generate_synth_data(N, T, bach_size=100):
     """
     Generate randomly synthetic data.
     :param N: Number of sequences
