@@ -110,7 +110,6 @@ def test_validation(model, batch_size):
     model.train()
 
 
-# Todo: Testing = Taking the RMSE?
 def test_model(model):
     # testloader = DataLoader(testset, batch_size=testset.size()[0], shuffle=False)
     loss = torch.nn.MSELoss()
@@ -121,13 +120,15 @@ def test_model(model):
         # for data in testset:
         # Apply model (forward pass).
         outputs = model(testset)
-
         total_loss += loss(testset, outputs)  # MSELoss of the output and data
+    return total_loss
 
 
 set_seed(0)
 
 trainset, validationset, testset = generate_synth_data(10000, 50)  # Generate synthetic data.
+
+
 
 # model = train_AE(1e-3, 30, 20)
 # test_model(model)
@@ -139,6 +140,20 @@ xs = np.arange(0, 50, 1)
 ys1 = testset[100, :, :]
 model.eval()
 ys2 = model(ys1).view(50).detach().numpy()
+plt.plot(xs, ys1.view(50).detach().numpy(), label='orig')
+plt.plot(xs, ys2, label='rec')
+plt.legend()
+plt.title('original and reconstructed signal')
+plt.show()
+"""
+
+
+"""
+AE = train_AE(1e-3, 500, 400)
+test_model(AE)
+ys1 = testset[0, :, :]
+ys2 = AE(ys1).view(50).detach().numpy()
+ys2 = AE(ys1).view(50).detach().numpy()
 plt.plot(xs, ys1.view(50).detach().numpy(), label='orig')
 plt.plot(xs, ys2, label='rec')
 plt.legend()
