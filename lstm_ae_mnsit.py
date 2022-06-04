@@ -1,5 +1,6 @@
 import os
 import torch
+import torchvision
 from torch import nn, optim
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
@@ -8,6 +9,10 @@ import numpy as np
 from syn_dat_gen import generate_synth_data
 import matplotlib.pyplot as plt
 from pathlib import Path
+import torchvision.transforms as transforms
+
+ROW_BY_ROW_INPUT = 28
+PIXEL_INPUT = 1
 
 
 def set_seed(seed):
@@ -22,9 +27,9 @@ def create_folders(path):
     Path(path).mkdir(parents=True, exist_ok=True)
 
 
-class LSTM_AE(nn.Module):
-    def __init__(self, input_size, hidden_size, gradient_clipping=False):
-        super(LSTM_AE, self).__init__()
+class LSTM_AE_MNIST(nn.Module):
+    def __init__(self, input_size, hidden_size, is_reconstruct):
+        super(LSTM_AE_MNIST, self).__init__()
         # Regular Parameters
         self.input_size = input_size
         self.hidden_size = hidden_size
@@ -32,7 +37,10 @@ class LSTM_AE(nn.Module):
         # Torch parameters
         self.encoder = nn.LSTM(input_size, hidden_size, batch_first=True)
         self.decoder = nn.LSTM(hidden_size, hidden_size, batch_first=True)
-        self.linear = nn.Linear(hidden_size, input_size, bias=False)  # Todo: Do we need this?
+        if is_reconstruct:
+            self.linear = nn.Linear(hidden_size, input_size, bias=False)  # Todo: Do we need this?
+        else:
+            self.linear = nn.Linear(hidden_size, 10, bias=False)
 
     def forward(self, x):
         output, (_, _) = self.encoder.forward(x)  # z is the last hidden state of the encoder.
@@ -42,10 +50,10 @@ class LSTM_AE(nn.Module):
         return out
 
 
-def train_AE(lr: float, batch_size: int, epochs: int, hidden_size, clip: bool = None):
+def train_AE(input, lr: float, batch_size: int, epochs: int, hidden_size, clip: bool = None):
     trainloader = DataLoader(trainset, batch_size=batch_size, shuffle=True)
-    model = LSTM_AE(1,
-                    hidden_size)  # Choosing hidden_state_size to be smaller than the sequence_size, so we won't be learning the id function.
+    model = LSTM_AE_MNIST(input,
+                    hidden_size, False)  # Choosing hidden_state_size to be smaller than the sequence_size, so we won't be learning the id function.
     opt = optim.Adam(model.parameters(), lr)
     critireon = torch.nn.MSELoss()
     total_loss = 0.0
@@ -71,10 +79,10 @@ def train_AE(lr: float, batch_size: int, epochs: int, hidden_size, clip: bool = 
             best_epoch = epoch
 
     # save the model:
-    file_name = f'ae_toy_{"Adam"}_lr={lr}_hidden_size={hidden_size}_gradient_clipping={clip}_batch_size{batch_size}' \
+    file_name = f'ae_mnist_{"Adam"}_lr={lr}_hidden_size={hidden_size}_gradient_clipping={clip}_batch_size{batch_size}' \
                 f'_epoch{epochs}_best_epoch{best_epoch}_best_loss{best_loss}'
 
-    path = os.path.join("saved_models", "toy_task")
+    path = os.path.join("saved_models", "mnist_task")
     # create_folders(path)
     torch.save(model, os.path.join(path, file_name + '.pt'))
 
@@ -92,22 +100,11 @@ def grid_search():
                 for grad_clipping in [None, 0.9]:
                     print("Model num: ", counter)
                     counter += 1
-                    if counter < 5: continue
                     _, loss = train_AE(lr, batch_size, 600, hidden_state_size, grad_clipping)
                     if loss < best_loss:
                         best_loss = loss
                         describe_model = (counter, hidden_state_size, lr, batch_size, grad_clipping, loss)
     print("best model {} params:\nhidden state: {}\nlearning state: {}\nbatch size: {}\ngrad clipping: {}\nloss: {}".format(*describe_model))
-
-
-def test_validation(model, batch_size):
-    # validationloader = DataLoader(validationset, batch_size=validationset.size()[0], shuffle=False)
-    loss = torch.nn.MSELoss()
-    model.eval()
-    output = model(validationset)
-    curr_loss = loss(validationset, output)  # print("Accuracy: {:.4f}".format(acc))
-    print(f"validation loss = {loss.item()}")
-    model.train()
 
 
 # Todo: Testing = Taking the RMSE?
@@ -117,31 +114,20 @@ def test_model(model):
     # Test the model on the test-data
     model.eval()  # Change flag in parent model from true to false (train-flag).
     total_loss = 0
-    with torch.no_grad():  # Everything below - will not calculate the gradients.
+    #with torch.no_grad():  # Everything below - will not calculate the gradients.
         # for data in testset:
         # Apply model (forward pass).
-        outputs = model(testset)
+        #outputs = model(testset)
 
-        total_loss += loss(testset, outputs)  # MSELoss of the output and data
+        #total_loss += loss(testset, outputs)  # MSELoss of the output and data
 
 
 set_seed(0)
 
-trainset, validationset, testset = generate_synth_data(10000, 50)  # Generate synthetic data.
+transform = transforms.Compose(
+    [transforms.ToTensor(),
+     transforms.Normalize((.5, .5, .5), (.5, .5, .5))])
+trainset = torchvision.datasets.MNIST(root='../data/', train=True, download=True,
+                                        transform=transform)
 
-# model = train_AE(1e-3, 30, 20)
-# test_model(model)
-#model = torch.load("saved_models/toy_task/ae_toy_Adam_lr=0.01_hidden_size=30__gradient_clipping=0.9_batch_size64_epoch=600.pt")
-grid_search()
-# print a ts and a reconstruction of it.
-"""
-xs = np.arange(0, 50, 1)
-ys1 = testset[100, :, :]
-model.eval()
-ys2 = model(ys1).view(50).detach().numpy()
-plt.plot(xs, ys1.view(50).detach().numpy(), label='orig')
-plt.plot(xs, ys2, label='rec')
-plt.legend()
-plt.title('original and reconstructed signal')
-plt.show()
-"""
+# grid_search()
