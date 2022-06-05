@@ -47,7 +47,7 @@ def train_AE(lr: float, batch_size: int, epochs: int, hidden_size, clip: bool = 
     model = LSTM_AE(1,
                     hidden_size)  # Choosing hidden_state_size to be smaller than the sequence_size, so we won't be learning the id function.
     opt = optim.Adam(model.parameters(), lr)
-    critireon = torch.nn.MSELoss()
+    criterion = torch.nn.MSELoss()
     total_loss = 0.0
     best_loss = float('inf')
     best_epoch = 0
@@ -57,7 +57,7 @@ def train_AE(lr: float, batch_size: int, epochs: int, hidden_size, clip: bool = 
         for i, data in enumerate(trainloader):
             opt.zero_grad()
             output = model(data)
-            loss = critireon(data, output)
+            loss = criterion(data, output)
             total_loss += loss.item()
             loss.backward()
             if clip is not None:
@@ -128,7 +128,7 @@ def test_model(model):
 
 set_seed(0)
 trainset, validationset, testset = generate_synth_data(10000, 50)  # Generate synthetic data.
-# grid_search()
+grid_search()
 
 # model = torch.load("saved_models/toy_task/ae_toy_Adam_lr=0.01_hidden_size=30__gradient_clipping=0.9_batch_size64_epoch=600.pt")
 def check_some_ts(model):
