@@ -3,7 +3,7 @@ import torch
 from torch import nn, optim
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
-from torch.nn.utils import clip_grad_norm
+from torch.nn.utils import clip_grad_norm_
 import numpy as np
 from syn_dat_gen import generate_synth_data
 import matplotlib.pyplot as plt
@@ -87,12 +87,13 @@ def grid_search():
     best_loss = float('inf')
     describe_model = None
     for hidden_state_size in [30, 50, 100, 150]:
-        for lr in [1e-2, 1e-3, 1e-4]:
-            for batch_size in [32, 64]:
+        for lr in [1e-2, 1e-3, 5e-3]:
+            for batch_size in [32, 64, 128]:
                 for grad_clipping in [None, 0.9]:
                     print("Model num: ", counter)
                     counter += 1
-                    if counter < 5: continue
+                    if counter < 40:
+                        continue
                     _, loss = train_AE(lr, batch_size, 600, hidden_state_size, grad_clipping)
                     if loss < best_loss:
                         best_loss = loss
@@ -127,13 +128,13 @@ def test_model(model):
 set_seed(0)
 
 trainset, validationset, testset = generate_synth_data(10000, 50)  # Generate synthetic data.
+grid_search()
 
 
 
 # model = train_AE(1e-3, 30, 20)
 # test_model(model)
 #model = torch.load("saved_models/toy_task/ae_toy_Adam_lr=0.01_hidden_size=30__gradient_clipping=0.9_batch_size64_epoch=600.pt")
-grid_search()
 # print a ts and a reconstruction of it.
 """
 xs = np.arange(0, 50, 1)
