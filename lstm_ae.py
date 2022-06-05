@@ -92,7 +92,7 @@ def grid_search():
                 for grad_clipping in [None, 0.9]:
                     print(f'\n\n\nModel num: {counter}, h_s_size: {hidden_state_size}, lr: {lr}, b_size: {batch_size}, g_clip: {grad_clipping}')
                     counter += 1
-                    if counter < 40:
+                    if counter < 43:
                         continue
                     _, loss = train_AE(lr, batch_size, 600, hidden_state_size, grad_clipping)
                     if loss < best_loss:
@@ -125,10 +125,24 @@ def test_model(model):
     return total_loss
 
 
-set_seed(0)
 
+set_seed(0)
 trainset, validationset, testset = generate_synth_data(10000, 50)  # Generate synthetic data.
-grid_search()
+# grid_search()
+
+# model = torch.load("saved_models/toy_task/ae_toy_Adam_lr=0.01_hidden_size=30__gradient_clipping=0.9_batch_size64_epoch=600.pt")
+def check_some_ts(model):
+    xs = np.arange(0, 50, 1)
+    for ind in [0, 50, 100, 150, 200, 250, 300, 350, 400]:
+        ys = testset[ind, :, :]
+        ys_ae = model(ys).view(50).detach().numpy()
+        ys = ys.view(50).detach().numpy()
+        plt.plot(xs, ys, label=f'orig')
+        plt.plot(xs, ys_ae, label=f'rec')
+        plt.title(f'Original and reconstructed signals - ind={ind}')
+        plt.legend()
+        plt.show()
+# check_some_ts(model)
 
 
 
