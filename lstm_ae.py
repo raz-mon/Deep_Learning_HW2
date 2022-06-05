@@ -61,7 +61,7 @@ def train_AE(lr: float, batch_size: int, epochs: int, hidden_size, clip: bool = 
             total_loss += loss.item()
             loss.backward()
             if clip is not None:
-                clip_grad_norm(model.parameters(), max_norm=clip)
+                clip_grad_norm_(model.parameters(), max_norm=clip)
             opt.step()
 
         print(f'epoch {epoch}, loss: {total_loss}')
