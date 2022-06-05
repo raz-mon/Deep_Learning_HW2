@@ -3,7 +3,7 @@ import torch
 from torch import nn, optim
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
-from torch.nn.utils import clip_grad_norm
+from torch.nn.utils import clip_grad_norm_
 import numpy as np
 from syn_dat_gen import generate_synth_data
 import matplotlib.pyplot as plt
@@ -61,7 +61,7 @@ def train_AE(lr: float, batch_size: int, epochs: int, hidden_size, clip: bool = 
             total_loss += loss.item()
             loss.backward()
             if clip is not None:
-                clip_grad_norm(model.parameters(), max_norm=clip)
+                clip_grad_norm_(model.parameters(), max_norm=clip)
             opt.step()
 
         print(f'epoch {epoch}, loss: {total_loss}')
@@ -87,12 +87,13 @@ def grid_search():
     best_loss = float('inf')
     describe_model = None
     for hidden_state_size in [30, 50, 100, 150]:
-        for lr in [1e-2, 1e-3, 1e-4]:
-            for batch_size in [32, 64]:
+        for lr in [1e-2, 1e-3, 5e-3]:
+            for batch_size in [32, 64, 128]:
                 for grad_clipping in [None, 0.9]:
-                    print("Model num: ", counter)
+                    print(f'\n\n\nModel num: {counter}, h_s_size: {hidden_state_size}, lr: {lr}, b_size: {batch_size}, g_clip: {grad_clipping}')
                     counter += 1
-                    if counter < 14: continue
+                    if counter < 43:
+                        continue
                     _, loss = train_AE(lr, batch_size, 600, hidden_state_size, grad_clipping)
                     if loss < best_loss:
                         best_loss = loss
@@ -110,7 +111,6 @@ def test_validation(model, batch_size):
     model.train()
 
 
-# Todo: Testing = Taking the RMSE?
 def test_model(model):
     # testloader = DataLoader(testset, batch_size=testset.size()[0], shuffle=False)
     loss = torch.nn.MSELoss()
@@ -121,24 +121,54 @@ def test_model(model):
         # for data in testset:
         # Apply model (forward pass).
         outputs = model(testset)
-
         total_loss += loss(testset, outputs)  # MSELoss of the output and data
+    return total_loss
+
 
 
 set_seed(0)
-
 trainset, validationset, testset = generate_synth_data(10000, 50)  # Generate synthetic data.
+# grid_search()
+
+# model = torch.load("saved_models/toy_task/ae_toy_Adam_lr=0.01_hidden_size=30__gradient_clipping=0.9_batch_size64_epoch=600.pt")
+def check_some_ts(model):
+    xs = np.arange(0, 50, 1)
+    for ind in [0, 50, 100, 150, 200, 250, 300, 350, 400]:
+        ys = testset[ind, :, :]
+        ys_ae = model(ys).view(50).detach().numpy()
+        ys = ys.view(50).detach().numpy()
+        plt.plot(xs, ys, label=f'orig')
+        plt.plot(xs, ys_ae, label=f'rec')
+        plt.title(f'Original and reconstructed signals - ind={ind}')
+        plt.legend()
+        plt.show()
+# check_some_ts(model)
+
+
 
 # model = train_AE(1e-3, 30, 20)
 # test_model(model)
-#model = torch.load("saved_models/toy_task/ae_toy_Adam_lr=0.001_hidden_size=30_gradient_clipping=0.9_batch_size64_epoch600_best_epoch595_best_loss3.2982877418398857.pt")
-grid_search()
+#model = torch.load("saved_models/toy_task/ae_toy_Adam_lr=0.01_hidden_size=30__gradient_clipping=0.9_batch_size64_epoch=600.pt")
 # print a ts and a reconstruction of it.
 """
 xs = np.arange(0, 50, 1)
-ys1 = validationset[100, :, :]
+ys1 = testset[100, :, :]
 model.eval()
 ys2 = model(ys1).view(50).detach().numpy()
+plt.plot(xs, ys1.view(50).detach().numpy(), label='orig')
+plt.plot(xs, ys2, label='rec')
+plt.legend()
+plt.title('original and reconstructed signal')
+plt.show()
+"""
+
+
+"""
+AE = train_AE(1e-3, 500, 400)
+test_model(AE)
+ys1 = testset[0, :, :]
+ys2 = AE(ys1).view(50).detach().numpy()
+ys2 = AE(ys1).view(50).detach().numpy()
 plt.plot(xs, ys1.view(50).detach().numpy(), label='orig')
 plt.plot(xs, ys2, label='rec')
 plt.legend()

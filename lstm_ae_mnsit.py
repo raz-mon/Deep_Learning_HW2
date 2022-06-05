@@ -50,22 +50,37 @@ class LSTM_AE_MNIST(nn.Module):
         return out
 
 
-def train_AE(input, lr: float, batch_size: int, epochs: int, hidden_size, clip: bool = None):
-    trainloader = DataLoader(trainset, batch_size=batch_size, shuffle=True)
-    model = LSTM_AE_MNIST(input,
-                    hidden_size, False)  # Choosing hidden_state_size to be smaller than the sequence_size, so we won't be learning the id function.
+def reshape_row_by_row(data, batch_size):
+    data = torch.tensor(data)
+    return data.view(batch_size, 28, 28)
+
+
+def reshape_pixel_by_pixel(data, batch_size):
+    data = torch.tensor(data)
+    return data.view(batch_size, 28 * 28, 1)
+
+
+def train_AE(input, lr: float, batch_size: int, epochs: int, hidden_size, clip, is_reconstruct, form):
+    format_dict = {"rbr": lambda x: reshape_row_by_row(x, batch_size),
+               "pbp": lambda x: reshape_pixel_by_pixel(x, batch_size)}
+    convert = format_dict[form]
+    trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=True)
+    model = LSTM_AE_MNIST(input, hidden_size, is_reconstruct)
+    # Choosing hidden_state_size to be smaller than the sequence_size, so we won't be learning the id function.
     opt = optim.Adam(model.parameters(), lr)
-    critireon = torch.nn.MSELoss()
+    criterion = torch.nn.MSELoss()
     total_loss = 0.0
     best_loss = float('inf')
     best_epoch = 0
     for epoch in range(epochs):
         total_loss = 0.0
-
-        for i, data in enumerate(trainloader):
+        for i, (data, target) in enumerate(trainloader):
             opt.zero_grad()
-            output = model(data)
-            loss = critireon(data, output)
+            output = model(convert(data))
+            if is_reconstruct:
+                loss = criterion(data, output)
+            else:
+                loss = criterion(target, output)
             total_loss += loss.item()
             loss.backward()
             if clip is not None:
@@ -80,10 +95,10 @@ def train_AE(input, lr: float, batch_size: int, epochs: int, hidden_size, clip: 
 
     # save the model:
     file_name = f'ae_mnist_{"Adam"}_lr={lr}_hidden_size={hidden_size}_gradient_clipping={clip}_batch_size{batch_size}' \
-                f'_epoch{epochs}_best_epoch{best_epoch}_best_loss{best_loss}'
+                f'_epoch{epochs}_best_epoch{best_epoch}_best_loss{best_loss}_isreconstruct{is_reconstruct}'
 
     path = os.path.join("saved_models", "mnist_task")
-    # create_folders(path)
+    create_folders(path)
     torch.save(model, os.path.join(path, file_name + '.pt'))
 
     return model, total_loss
@@ -95,16 +110,21 @@ def grid_search():
     best_loss = float('inf')
     describe_model = None
     for hidden_state_size in [30, 50, 100, 150]:
-        for lr in [1e-2, 1e-3, 1e-4]:
-            for batch_size in [32, 64]:
+        for lr in [1e-2, 1e-3, 5e-3]:
+            for batch_size in [32, 64, 128]:
                 for grad_clipping in [None, 0.9]:
-                    print("Model num: ", counter)
+                    print(
+                        f'\n\n\nModel num: {counter}, h_s_size: {hidden_state_size}, lr: {lr}, b_size: {batch_size}, g_clip: {grad_clipping}')
                     counter += 1
-                    _, loss = train_AE(lr, batch_size, 600, hidden_state_size, grad_clipping)
+                    if counter < 0:
+                        continue
+                    _, loss = train_AE(28, lr, batch_size, 2, hidden_state_size, grad_clipping, True, "rbr")
                     if loss < best_loss:
                         best_loss = loss
                         describe_model = (counter, hidden_state_size, lr, batch_size, grad_clipping, loss)
-    print("best model {} params:\nhidden state: {}\nlearning state: {}\nbatch size: {}\ngrad clipping: {}\nloss: {}".format(*describe_model))
+    print(
+        "best model {} params:\nhidden state: {}\nlearning state: {}\nbatch size: {}\ngrad clipping: {}\nloss: {}".format(
+            *describe_model))
 
 
 # Todo: Testing = Taking the RMSE?
@@ -114,20 +134,26 @@ def test_model(model):
     # Test the model on the test-data
     model.eval()  # Change flag in parent model from true to false (train-flag).
     total_loss = 0
-    #with torch.no_grad():  # Everything below - will not calculate the gradients.
-        # for data in testset:
-        # Apply model (forward pass).
-        #outputs = model(testset)
+    # with torch.no_grad():  # Everything below - will not calculate the gradients.
+    # for data in testset:
+    # Apply model (forward pass).
+    # outputs = model(testset)
 
-        #total_loss += loss(testset, outputs)  # MSELoss of the output and data
+    # total_loss += loss(testset, outputs)  # MSELoss of the output and data
+
+
+def imshow(img):
+    plt.imshow(img[0])
+    plt.show()
 
 
 set_seed(0)
 
 transform = transforms.Compose(
     [transforms.ToTensor(),
-     transforms.Normalize((.5, .5, .5), (.5, .5, .5))])
-trainset = torchvision.datasets.MNIST(root='../data/', train=True, download=True,
-                                        transform=transform)
+     transforms.Normalize((.5,), (.5,))])
 
-# grid_search()
+trainset = torchvision.datasets.MNIST('./data', train=True, download=True, transform=transform)
+testset = torchvision.datasets.MNIST('./data', train=False, transform=transform)
+
+grid_search()
