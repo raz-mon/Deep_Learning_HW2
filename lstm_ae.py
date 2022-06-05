@@ -90,7 +90,7 @@ def grid_search():
         for lr in [1e-2, 1e-3, 5e-3]:
             for batch_size in [32, 64, 128]:
                 for grad_clipping in [None, 0.9]:
-                    print("Model num: ", counter)
+                    print(f'\n\n\nModel num: {counter}, h_s_size: {hidden_state_size}, lr: {lr}, b_size: {batch_size}, g_clip: {grad_clipping}')
                     counter += 1
                     if counter < 40:
                         continue
