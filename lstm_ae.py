@@ -92,7 +92,7 @@ def grid_search():
                 for grad_clipping in [None, 0.9]:
                     print("Model num: ", counter)
                     counter += 1
-                    if counter < 5: continue
+                    if counter < 14: continue
                     _, loss = train_AE(lr, batch_size, 600, hidden_state_size, grad_clipping)
                     if loss < best_loss:
                         best_loss = loss
@@ -131,12 +131,12 @@ trainset, validationset, testset = generate_synth_data(10000, 50)  # Generate sy
 
 # model = train_AE(1e-3, 30, 20)
 # test_model(model)
-#model = torch.load("saved_models/toy_task/ae_toy_Adam_lr=0.01_hidden_size=30__gradient_clipping=0.9_batch_size64_epoch=600.pt")
+#model = torch.load("saved_models/toy_task/ae_toy_Adam_lr=0.001_hidden_size=30_gradient_clipping=0.9_batch_size64_epoch600_best_epoch595_best_loss3.2982877418398857.pt")
 grid_search()
 # print a ts and a reconstruction of it.
 """
 xs = np.arange(0, 50, 1)
-ys1 = testset[100, :, :]
+ys1 = validationset[100, :, :]
 model.eval()
 ys2 = model(ys1).view(50).detach().numpy()
 plt.plot(xs, ys1.view(50).detach().numpy(), label='orig')
