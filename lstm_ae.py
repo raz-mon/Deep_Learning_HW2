@@ -32,13 +32,13 @@ class LSTM_AE(nn.Module):
         # Torch parameters
         self.encoder = nn.LSTM(input_size, hidden_size, batch_first=True)
         self.decoder = nn.LSTM(hidden_size, hidden_size, batch_first=True)
-        self.linear = nn.Linear(hidden_size, input_size, bias=False)  # Todo: Do we need this?
+        self.linear = nn.Linear(hidden_size, input_size, bias=False)
 
     def forward(self, x):
         output, (_, _) = self.encoder.forward(x)  # z is the last hidden state of the encoder.
         z = output[:, -1].repeat(1, output.shape[1]).view(output.shape)
         z2, (_, _) = self.decoder.forward(z)  # z2 is the last hidden state of the decoder.
-        out = self.linear(z2)  # Todo: Do we need this?
+        out = self.linear(z2)
         return out
 
 
@@ -88,15 +88,19 @@ def grid_search():
     counter = 0
     best_loss = float('inf')
     describe_model = None
-    for hidden_state_size in [30, 50, 100, 150]:
-        for lr in [1e-2, 1e-3, 5e-3]:
-            for batch_size in [32, 64, 128]:
-                for grad_clipping in [None, 0.9]:
+    # for hidden_state_size in [30, 50, 100, 150]:
+    for hidden_state_size in [50]:
+        # for lr in [1e-2, 1e-3, 5e-3]:
+        for lr in [1e-3]:
+            # for batch_size in [32, 64, 128]:
+            for batch_size in [500]:
+                # for grad_clipping in [None, 0.9]:
+                for grad_clipping in [0.9]:
                     print(f'\n\n\nModel num: {counter}, h_s_size: {hidden_state_size}, lr: {lr}, b_size: {batch_size}, g_clip: {grad_clipping}')
-                    counter += 1
-                    if counter < 43:
-                        continue
-                    _, loss = train_AE(lr, batch_size, 600, hidden_state_size, grad_clipping)
+                    # counter += 1
+                    # if counter < 43:
+                    #     continue
+                    _, loss = train_AE(lr, batch_size, 500, hidden_state_size, grad_clipping)
                     if loss < best_loss:
                         best_loss = loss
                         describe_model = (counter, hidden_state_size, lr, batch_size, grad_clipping, loss)
@@ -132,10 +136,10 @@ set_seed(0)
 trainset, validationset, testset = generate_synth_data(10000, 50)  # Generate synthetic data.
 # grid_search()
 
-# model = torch.load("saved_models/toy_task/ae_toy_Adam_lr=0.001_hidden_size=100_gradient_clipping=None_batch_size32_epoch600_best_epoch429_best_loss0.09430468556820415.pt")
+model = torch.load("saved_models/toy_task/ae_toy_Adam_lr=0.001_hidden_size=50_gradient_clipping=0.9_batch_size500_epoch500_best_epoch499_best_loss0.6031971350312233.pt")
 def check_some_ts(model):
     xs = np.arange(0, 50, 1)
-    for ind in [0, 50, 100, 150, 200, 250, 300, 350, 400]:
+    for ind in [0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900, 950, 1000]:
         ys = testset[ind, :, :]
         ys_ae = model(ys).view(50).detach().numpy()
         ys = ys.view(50).detach().numpy()
@@ -144,7 +148,7 @@ def check_some_ts(model):
         plt.title(f'Original and reconstructed signals - ind={ind}')
         plt.legend()
         plt.show()
-# check_some_ts(model)
+check_some_ts(model)
 
 
 
