@@ -50,3 +50,4 @@ def generate_and_plot():
     plt.legend()
     # plt.savefig('samples_from_synthetic_data.png')
     plt.show()
+
