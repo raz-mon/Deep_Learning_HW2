@@ -107,13 +107,14 @@ def grid_search():
     print("best model {} params:\nhidden state: {}\nlearning state: {}\nbatch size: {}\ngrad clipping: {}\nloss: {}".format(*describe_model))
 
 
-def test_validation(model, batch_size):
+def test_validation(model, batch_size=None):
     # validationloader = DataLoader(validationset, batch_size=validationset.size()[0], shuffle=False)
     loss = torch.nn.MSELoss()
     model.eval()
-    output = model(validationset)
-    curr_loss = loss(validationset, output)  # print("Accuracy: {:.4f}".format(acc))
-    print(f"validation loss = {curr_loss.item()}")
+    with torch.no_grad():
+        output = model(validationset)
+        curr_loss = loss(validationset, output)  # print("Accuracy: {:.4f}".format(acc))
+    # print(f"validation loss = {curr_loss.item()}")
     model.train()
     return curr_loss
 
@@ -121,12 +122,9 @@ def test_validation(model, batch_size):
 def test_model(model):
     # testloader = DataLoader(testset, batch_size=testset.size()[0], shuffle=False)
     loss = torch.nn.MSELoss()
-    # Test the model on the test-data
     model.eval()  # Change flag in parent model from true to false (train-flag).
     total_loss = 0
     with torch.no_grad():  # Everything below - will not calculate the gradients.
-        # for data in testset:
-        # Apply model (forward pass).
         outputs = model(testset)
         total_loss += loss(testset, outputs)  # MSELoss of the output and data
     model.train()
@@ -152,8 +150,10 @@ def check_some_ts(model):
         plt.title(f'Original and reconstructed signals - ind={ind}')
         plt.legend()
         plt.show()
-check_some_ts(model)
+# check_some_ts(model)
 
+# print(test_validation(model))
+# print(test_model(model))
 
 
 
