@@ -39,14 +39,12 @@ class LSTM_AE(nn.Module):
         z = output[:, -1].repeat(1, output.shape[1]).view(output.shape)
         z2, (_, _) = self.decoder.forward(z)  # z2 is the last hidden state of the decoder.
         out = self.linear(z2)
-        out = torch.sigmoid(out)
+        # out = torch.sigmoid(out)
         return out
 
 
 def train_AE(lr: float, batch_size: int, epochs: int, hidden_size, clip: bool = None):
     trainloader = DataLoader(trainset, batch_size=batch_size, shuffle=True)
-    # Todo: Make sure that the DataLoader indeed returns what we want it to return!! It shouldn't change the
-    #  data representation (dimension wise).
     model = LSTM_AE(1,
                     hidden_size)  # Choosing hidden_state_size to be smaller than the sequence_size, so we won't be learning the id function.
     opt = optim.Adam(model.parameters(), lr)
@@ -131,6 +129,7 @@ def test_model(model):
         # Apply model (forward pass).
         outputs = model(testset)
         total_loss += loss(testset, outputs)  # MSELoss of the output and data
+    model.train()
     return total_loss
 
 
@@ -144,7 +143,9 @@ def check_some_ts(model):
     xs = np.arange(0, 50, 1)
     for ind in [0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900, 950, 1000]:
         ys = trainset[ind, :, :]
+        model.eval()
         ys_ae = model(ys).view(50).detach().numpy()
+        model.train()
         ys = ys.view(50).detach().numpy()
         plt.plot(xs, ys, label=f'orig')
         plt.plot(xs, ys_ae, label=f'rec')
