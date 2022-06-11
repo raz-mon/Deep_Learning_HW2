@@ -44,7 +44,7 @@ class LSTM_AE_MNIST(nn.Module):
         output, (_, _) = self.encoder.forward(x)  # z is the last hidden state of the encoder.
         z = output[:, -1].repeat(1, output.shape[1]).view(output.shape)
         z2, (_, _) = self.decoder.forward(z)  # z2 is the last hidden state of the decoder.
-        return self.reconstruct_linear(z2), self.classify_linear(z2)
+        return self.reconstruct_linear(z2), self.classify_linear(z2[:, -1])
 
 
 def reshape_row_by_row(data, batch_size):
@@ -66,6 +66,7 @@ def train_AE(input, lr: float, batch_size: int, epochs: int, hidden_size, clip, 
     # Choosing hidden_state_size to be smaller than the sequence_size, so we won't be learning the id function.
     opt = optim.Adam(model.parameters(), lr)
     criterion = torch.nn.MSELoss()
+    CE = torch.nn.CrossEntropyLoss()
     total_loss = 0.0
     best_loss = float('inf')
     best_epoch = 0
@@ -81,7 +82,8 @@ def train_AE(input, lr: float, batch_size: int, epochs: int, hidden_size, clip, 
             if is_reconstruct:
                 loss = criterion(data, output_reconstruct)
             else:
-                loss = criterion(data, output_reconstruct) + criterion(data, output_classify)
+                #temp = torch.tensor(np.argmax(output_classify.detach().numpy(), axis=1))
+                loss = criterion(data, output_reconstruct) + CE(output_classify, target)
             total_loss += loss.item()
             loss.backward()
             if clip is not None:
@@ -99,7 +101,7 @@ def train_AE(input, lr: float, batch_size: int, epochs: int, hidden_size, clip, 
                 f'_epoch{epochs}_best_epoch{best_epoch}_best_loss{best_loss}_isreconstruct{is_reconstruct}'
 
     path = os.path.join("saved_models", "mnist_task")
-    create_folders(path)
+    # create_folders(path)
     torch.save(model, os.path.join(path, file_name + '.pt'))
 
     return model, total_loss
@@ -117,9 +119,9 @@ def grid_search():
                     print(
                         f'\n\n\nModel num: {counter}, h_s_size: {hidden_state_size}, lr: {lr}, b_size: {batch_size}, g_clip: {grad_clipping}')
                     counter += 1
-                    if counter < 0:
-                        continue
-                    _, loss = train_AE(28, lr, batch_size, 2, hidden_state_size, grad_clipping, True, "rbr")
+                    if counter > 1:
+                        break
+                    _, loss = train_AE(28, lr, batch_size, 3, hidden_state_size, grad_clipping, False, "rbr")
                     if loss < best_loss:
                         best_loss = loss
                         describe_model = (counter, hidden_state_size, lr, batch_size, grad_clipping, loss)
@@ -167,3 +169,18 @@ testset = torchvision.datasets.MNIST('./mnist_data/', train=False, download=True
 #         new_data, _ = model(data)
 #         imshow(new_data.detach().numpy())
 #     break
+
+grid_search()
+
+"""
+model = torch.load("saved_models/mnist_task/ae_mnist_Adam_lr=0.01_hidden_size=30_gradient_clipping=None_batch_size32_epoch3_best_epoch2_best_loss1098.8780343830585_isreconstructFalse.pt")
+trainloader = torch.utils.data.DataLoader(trainset, batch_size=1, shuffle=True)
+for i, (data, target) in enumerate(trainloader):
+    if not i:
+        imshow(data[0])
+        data = reshape_row_by_row(data, 1)
+        new_data, cls = model(data)
+        x = torch.tensor(np.argmax(cls.detach().numpy(), axis=1))
+        imshow(new_data.detach().numpy())
+    break
+"""
