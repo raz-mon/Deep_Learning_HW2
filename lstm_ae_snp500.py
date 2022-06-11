@@ -36,18 +36,90 @@ class LSTM_ae_snp500(nn.Module):
         # out2 = prediction..
         return out1 #, out2
 
-
+# Get data
 data = pd.read_csv('snp500_data/SP 500 Stock Prices 2014-2017.csv')
-# trainset = ...
-# validationset = ...
-# testset = ...
-trainset = None
-validationset = None
-testset = None
+data = data[['symbol', 'high']]
+names = data['symbol'].unique()
+tss = []                            # An array of all the time-series (per symbol).
+bad = []                            # An array of all the bad time-series - length not 1007.
+for name in names:
+    ts = data[data['symbol'] == name]['high']
+    if not len(ts.values) == 1007 or np.isnan(ts).sum() != 0:
+        bad += [ts.values]
+        continue
+    tss += [ts.values]
+tss = np.array(tss)
+orig_tss = tss.copy()
+
+# Normalize the data, with the min-max normalization.
+def min_max_norm(val, min, max):
+    return (val-min) / (max - min)
+
+"""class NormMinMax:
+    def __init__(self, min, max):
+        self.min = min
+        self.max = max
+
+    def normalize_ts(self, ts):
+        for ind in range(len(ts)):
+            ts[ind] = min_max_norm(ts[ind], min, max)
+
+    def unnormalize_ts(self):
+        for ind in range(len(ts)):
+            ts[ind] = ts[ind] * (self.max - self.min) + self.min"""
+
+for ts in tss:
+    min = np.min(ts)
+    max = np.max(ts)
+    for ind in range(len(ts)):
+        ts[ind] = min_max_norm(ts[ind], min, max)
+
+
+def unnormalize_tss(tss, init_ind):
+    """
+    Un-normalize time-series - according to their original min, max.
+    :param tss: The data. Contains the time-series we wish to un-normalize.
+    :type tss: Array of size (num_seq, seq_len).
+    :param range: The range of these time-series in the original data-set (train: (0, int(len(orig_tss) * 0.6), validation: (int(len(orig_tss) * 0.6), int(len(orig_tss) * 0.8), test: You get it..
+    :type range: Tuple of size 2: (begin_ind, end_ind).
+    :return: Un-normalized data.
+    :rtype: Array of the same size as the original one given (tss).
+    """
+    ret = []
+    for ind in range(len(tss)):
+        ts = tss[ind, :]
+        min = np.min(orig_tss[init_ind + ind, :])
+        max = np.max(orig_tss[init_ind + ind, :])
+        for ind2 in range(len(ts)):
+            ts[ind2] = ts[ind2] * (max - min) + min
+        ret += [ts]
+    return ret
+
+
+def unnormalize_ts(ts, ind):
+    ret = np.zeros(len(ts))
+    min = np.min(orig_tss[ind, :])
+    max = np.max(orig_tss[ind, :])
+    for ind in range(len(ts)):
+        ret[ind] = ts[ind] * (max - min) + min
+    return ret
+
+
+# Partition data to train, validation and test sets.
+train_limit = int(len(tss) * 0.6)
+validation_limit = int(len(tss) * 0.8)
+train = tss[:train_limit, :]
+validation = tss[train_limit:validation_limit, :]
+test = tss[validation_limit:, :]
+
+trainset = torch.tensor(train, dtype=torch.float32).view(len(train), len(train[0]), 1)       # Tensor of shape: (batch_size, seq_len, input_len) = (int(477*0.8), 1007, 1)
+validationset = torch.tensor(validation, dtype=torch.float32).view(len(validation), len(validation[0]), 1)       # Tensor of shape: (batch_size, seq_len, input_len) = (int(477*0.2), 1007, 1)
+testset = torch.tensor(test, dtype=torch.float32).view(len(test), len(test[0]), 1)       # Tensor of shape (approximately here): (batch_size, seq_len, input_len) = (int(477*0.2), 1007, 1)
 
 
 def train_AE(lr, batch_size, epochs, hidden_size, clip=None, optimizer=None):
     trainLoader = DataLoader(trainset, batch_size=batch_size, shuffle=True)
+    input_size = 1
     model = LSTM_ae_snp500(input_size, hidden_size)
     if optimizer is None:
         opt = optim.Adam(model.parameters(), lr)
@@ -82,24 +154,23 @@ def grid_search():
     best_loss = float('inf')
     describe_model = None
     # for hidden_state_size in [30, 50, 100, 150]:
-    for hidden_state_size in [50]:
+    for hidden_state_size in [150]:
         # for lr in [1e-2, 1e-3, 5e-3]:
         for lr in [1e-3]:
             # for batch_size in [32, 64, 128]:
-            for batch_size in [100]:
+            for batch_size in [20]:
                 # for grad_clipping in [None, 0.9]:
                 for grad_clipping in [0.9]:
                     print(f'\n\n\nModel num: {counter}, h_s_size: {hidden_state_size}, lr: {lr}, b_size: {batch_size}, g_clip: {grad_clipping}')
                     # counter += 1
                     # if counter < 43:
                     #     continue
-                    epochs = 500
+                    epochs = 100
                     model, loss = train_AE(lr, batch_size, epochs, hidden_state_size, grad_clipping)
                     if loss < best_loss:
                         best_loss = loss
                         describe_model = (counter, hidden_state_size, lr, batch_size, grad_clipping, loss)
-                    # Todo: Check how this model works on the validation set.
-                    validation_lost = check_validation(model)
+                    validation_lost = test_validation(model)
 
                     # save the model:
                     file_name = f'ae_snp500_{"Adam"}_lr={lr}_hidden_size={hidden_state_size}_gradient_clipping={grad_clipping}_batch_size{batch_size}' \
@@ -135,13 +206,6 @@ def test_model(model):
     return total_loss
 
 
-
-
-
-
-
-
-
 def plot_google_amazon_high_stocks():
     stocks = pd.read_csv('snp500_data/SP 500 Stock Prices 2014-2017.csv')
 
@@ -161,15 +225,46 @@ def plot_google_amazon_high_stocks():
     plt.savefig('figures/Part3/GOOGL_AMZN_daily_max.png')
     plt.show()
 
-plot_google_amazon_high_stocks()
+
+def check_some_ts(model):
+    xs = np.arange(0, 1007, 1)
+    for ind in [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 95]:
+        ys = testset[ind, :, :]
+        model.eval()
+        ys_ae = model(ys).view(1007).detach().numpy()
+        # ys_ae = unnormalize_ts(ys_ae, ind + int(len(orig_tss) * 0.8))
+        model.train()
+        ys = ys.view(1007).detach().numpy()
+        plt.plot(xs, ys, label=f'orig')
+        plt.plot(xs, ys_ae, label=f'rec')
+        plt.title(f'Original and reconstructed signals - ind={ind}')
+        plt.legend()
+        plt.show()
+
+
+
+
+# plot_google_amazon_high_stocks()
+grid_search()
+
+# model = torch.load("saved_models/snp500/ae_snp500_Adam_lr=0.001_hidden_size=50_gradient_clipping=0.9_batch_size100_epoch500_validation_loss_0.0645945817232132.pt")
+# check_some_ts(model)
 
 
 
 
 
+"""def plot_orig_and_reconstructed(model, ind):
+    ts = orig_tss[ind, :]
+    ts = np.array(ts)
+    output = model(ts)
+    ys = unnormalize_ts(output, ind)
 
-
-
+    xs = np.arange(0, len(ts), 1)
+    ys = ys.view(50).detach().numpy()
+    plt.plot(xs, ys, label=f'orig')
+    plt.plot(xs, ys_ae, label=f'rec')
+    plt.title(f'Original and reconstructed signals - ind={ind}')"""
 
 
 

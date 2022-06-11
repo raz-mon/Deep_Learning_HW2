@@ -45,6 +45,7 @@ class LSTM_AE(nn.Module):
 
 def train_AE(lr: float, batch_size: int, epochs: int, hidden_size, clip: bool = None):
     trainloader = DataLoader(trainset, batch_size=batch_size, shuffle=True)
+    # trainloader = DataLoader(trainset, shuffle=True)
     model = LSTM_AE(1,
                     hidden_size)  # Choosing hidden_state_size to be smaller than the sequence_size, so we won't be learning the id function.
     opt = optim.Adam(model.parameters(), lr)
@@ -134,9 +135,9 @@ def test_model(model):
 
 set_seed(0)
 trainset, validationset, testset = generate_synth_data(10000, 50)  # Generate synthetic data.
-# grid_search()
+grid_search()
 
-model = torch.load("saved_models/toy_task/ae_toy_Adam_lr=0.001_hidden_size=50_gradient_clipping=0.9_batch_size100_epoch500_best_epoch496_best_loss1.6074021961539984.pt")
+# model = torch.load("saved_models/toy_task/ae_toy_Adam_lr=0.001_hidden_size=50_gradient_clipping=0.9_batch_size100_epoch500_best_epoch496_best_loss1.6074021961539984.pt")
 def check_some_ts(model):
     xs = np.arange(0, 50, 1)
     for ind in [0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900, 950, 1000]:
