@@ -154,16 +154,16 @@ transform = transforms.Compose(
     [transforms.ToTensor(),
      transforms.Normalize((.5,), (.5,))])
 
-trainset = torchvision.datasets.MNIST('./data', train=True, download=True, transform=transform)
-testset = torchvision.datasets.MNIST('./data', train=False, transform=transform)
+trainset = torchvision.datasets.MNIST('./mnist_data/', train=True, download=True, transform=transform)
+testset = torchvision.datasets.MNIST('./mnist_data/', train=False, download=True, transform=transform)
 
 # grid_search()
-model = torch.load("saved_models/mnist_task/ae_mnist_Adam_lr=0.01_hidden_size=30_gradient_clipping=None_batch_size32_epoch2_best_epoch1_best_loss310.1443293467164_isreconstructTrue.pt")
-trainloader = torch.utils.data.DataLoader(trainset, batch_size=1, shuffle=True)
-for i, (data, target) in enumerate(trainloader):
-    if not i:
-        imshow(data[0])
-        data = reshape_row_by_row(data, 1)
-        new_data, _ = model(data)
-        imshow(new_data.detach().numpy())
-    break
+# model = torch.load("saved_models/mnist_task/ae_mnist_Adam_lr=0.01_hidden_size=30_gradient_clipping=None_batch_size32_epoch2_best_epoch1_best_loss310.1443293467164_isreconstructTrue.pt")
+# trainloader = torch.utils.data.DataLoader(trainset, batch_size=1, shuffle=True)
+# for i, (data, target) in enumerate(trainloader):
+#     if not i:
+#         imshow(data[0])
+#         data = reshape_row_by_row(data, 1)
+#         new_data, _ = model(data)
+#         imshow(new_data.detach().numpy())
+#     break
