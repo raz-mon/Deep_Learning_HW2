@@ -116,6 +116,23 @@ trainset = torch.tensor(train, dtype=torch.float32).view(len(train), len(train[0
 validationset = torch.tensor(validation, dtype=torch.float32).view(len(validation), len(validation[0]), 1)       # Tensor of shape: (batch_size, seq_len, input_len) = (int(477*0.2), 1007, 1)
 testset = torch.tensor(test, dtype=torch.float32).view(len(test), len(test[0]), 1)       # Tensor of shape (approximately here): (batch_size, seq_len, input_len) = (int(477*0.2), 1007, 1)
 
+# Data for prediction:
+pred_train = trainset[:-1, :, :]
+pred_validation = validationset[:-1, :, :]
+pred_test = testset[:-1, :, :]
+# pred_trainset = torch.tensor(pred_train, dtype=torch.float32).view(len(pred_train), len(pred_train[0]), 1)
+# pred_validationset = torch.tensor(pred_validation, dtype=torch.float32).view(len(pred_validation), len(pred_validation[0]), 1)
+# pred_testset = torch.tensor(pred_test, dtype=torch.float32).view(len(pred_test), len(pred_test[0]), 1)
+
+pred_train_correct = trainset[1:-1, :, :]
+pred_validation_correct = validationset[1:-1, :, :]
+pred_test_correct = testset[1:-1, :, :]
+# pred_trainset_correct = torch.tensor(pred_train_correct, dtype=torch.float32).view(len(pred_train_correct), len(pred_train_correct[0]), 1)
+# pred_validationset_correct = torch.tensor(pred_validation_correct, dtype=torch.float32).view(len(pred_validation_correct), len(pred_validation_correct[0]), 1)
+# pred_testset_correct = torch.tensor(pred_test_correct, dtype=torch.float32).view(len(pred_test_correct), len(pred_test_correct[0]), 1)
+
+# Todo: use these targets to penalize as the assignment instructs.
+
 
 def train_AE(lr, batch_size, epochs, hidden_size, clip=None, optimizer=None):
     trainLoader = DataLoader(trainset, batch_size=batch_size, shuffle=True)
@@ -146,26 +163,24 @@ def train_AE(lr, batch_size, epochs, hidden_size, clip=None, optimizer=None):
     return model, total_loss
 
 
-
-
 # Perform grid-search for the best hyper-parameters on the validation-set
 def grid_search():
     counter = 0
     best_loss = float('inf')
     describe_model = None
     # for hidden_state_size in [30, 50, 100, 150]:
-    for hidden_state_size in [150]:
+    for hidden_state_size in [130, 100, 80]:
         # for lr in [1e-2, 1e-3, 5e-3]:
-        for lr in [1e-3]:
+        for lr in [2e-3]:
             # for batch_size in [32, 64, 128]:
-            for batch_size in [20]:
+            for batch_size in [50, 100, 150]:
                 # for grad_clipping in [None, 0.9]:
                 for grad_clipping in [0.9]:
                     print(f'\n\n\nModel num: {counter}, h_s_size: {hidden_state_size}, lr: {lr}, b_size: {batch_size}, g_clip: {grad_clipping}')
                     # counter += 1
                     # if counter < 43:
                     #     continue
-                    epochs = 100
+                    epochs = 40
                     model, loss = train_AE(lr, batch_size, epochs, hidden_state_size, grad_clipping)
                     if loss < best_loss:
                         best_loss = loss
@@ -191,7 +206,7 @@ def test_validation(model, batch_size=None):
         curr_loss = loss(validationset, output)  # print("Accuracy: {:.4f}".format(acc))
     # print(f"validation loss = {curr_loss.item()}")
     model.train()
-    return curr_loss
+    return curr_loss.item()
 
 
 def test_model(model):
@@ -203,7 +218,18 @@ def test_model(model):
         outputs = model(testset)
         total_loss += loss(testset, outputs)  # MSELoss of the output and data
     model.train()
-    return total_loss
+    return total_loss.item()
+
+
+def test_train(model):
+    loss = torch.nn.MSELoss()
+    model.eval()  # Change flag in parent model from true to false (train-flag).
+    total_loss = 0
+    with torch.no_grad():  # Everything below - will not calculate the gradients.
+        outputs = model(trainset)
+        total_loss += loss(trainset, outputs)  # MSELoss of the output and data
+    model.train()
+    return total_loss.item()
 
 
 def plot_google_amazon_high_stocks():
@@ -245,12 +271,12 @@ def check_some_ts(model):
 
 
 # plot_google_amazon_high_stocks()
-grid_search()
+# grid_search()
 
-# model = torch.load("saved_models/snp500/ae_snp500_Adam_lr=0.001_hidden_size=50_gradient_clipping=0.9_batch_size100_epoch500_validation_loss_0.0645945817232132.pt")
+model = torch.load("saved_models/snp500/ae_snp500_Adam_lr=0.002_hidden_size=80_gradient_clipping=0.9_batch_size150_epoch40_validation_loss_0.06468365341424942.pt")
 # check_some_ts(model)
-
-
+# print(test_train(model))
+check_some_ts(model)
 
 
 
