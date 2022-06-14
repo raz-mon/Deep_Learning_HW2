@@ -6,6 +6,8 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torch.nn.utils import clip_grad_norm
 import numpy as np
+
+import util
 from syn_dat_gen import generate_synth_data
 import matplotlib.pyplot as plt
 from pathlib import Path
@@ -57,11 +59,12 @@ def reshape_pixel_by_pixel(data, batch_size):
     return data.view(batch_size, 28 * 28, 1)
 
 
-def train_AE(input, lr: float, batch_size: int, epochs: int, hidden_size, clip, is_reconstruct, form):
+def train_AE(set, input, lr: float, batch_size: int, epochs: int, hidden_size, clip, is_reconstruct, form):
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     format_dict = {"rbr": lambda x: reshape_row_by_row(x, batch_size),
-               "pbp": lambda x: reshape_pixel_by_pixel(x, batch_size)}
+                   "pbp": lambda x: reshape_pixel_by_pixel(x, batch_size)}
     convert = format_dict[form]
-    trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=True)
+    trainloader = torch.utils.data.DataLoader(set, batch_size=batch_size, shuffle=True)
     model = LSTM_AE_MNIST(input, hidden_size)
     # Choosing hidden_state_size to be smaller than the sequence_size, so we won't be learning the id function.
     opt = optim.Adam(model.parameters(), lr)
@@ -70,10 +73,14 @@ def train_AE(input, lr: float, batch_size: int, epochs: int, hidden_size, clip, 
     total_loss = 0.0
     best_loss = float('inf')
     best_epoch = 0
+    loss = 0
+    accuracies = []
+    losses = []
     for epoch in range(epochs):
         total_loss = 0.0
         for i, (data, target) in enumerate(trainloader):
             print(i)
+            # if i > 50: break
             opt.zero_grad()
             data = data.to(device)
             target = target.to(device)
@@ -82,19 +89,28 @@ def train_AE(input, lr: float, batch_size: int, epochs: int, hidden_size, clip, 
             if is_reconstruct:
                 loss = criterion(data, output_reconstruct)
             else:
-                #temp = torch.tensor(np.argmax(output_classify.detach().numpy(), axis=1))
                 loss = criterion(data, output_reconstruct) + CE(output_classify, target)
             total_loss += loss.item()
             loss.backward()
             if clip is not None:
                 clip_grad_norm(model.parameters(), max_norm=clip)
             opt.step()
+        accuracy = 0
+        for i, (data, target) in enumerate(trainloader):
+            # if i > 50: break
+            data = convert(data)
+            _, output_classify = model(data)
+            temp1 = np.argmax(output_classify.detach().numpy(), axis=1)
+            temp2 = target.detach().numpy()
+            accuracy += sum(temp1 == temp2)
 
         print(f'epoch {epoch}, loss: {total_loss}')
         # Todo: How do we learn from validation data? By performing the grid-search below?
         if best_loss > total_loss:
             best_loss = total_loss
             best_epoch = epoch
+        losses.append(float(loss))
+        accuracies.append(accuracy / len(set))
 
     # save the model:
     file_name = f'ae_mnist_{"Adam"}_lr={lr}_hidden_size={hidden_size}_gradient_clipping={clip}_batch_size{batch_size}' \
@@ -104,24 +120,40 @@ def train_AE(input, lr: float, batch_size: int, epochs: int, hidden_size, clip, 
     # create_folders(path)
     torch.save(model, os.path.join(path, file_name + '.pt'))
 
-    return model, total_loss
+    return losses, accuracies, model, total_loss
 
 
 # Perform grid-search for the best hyper-parameters on the validation-set
-def grid_search():
+def grid_search(set):
     counter = 0
     best_loss = float('inf')
     describe_model = None
-    for hidden_state_size in [30, 50, 100, 150]:
-        for lr in [1e-2, 1e-3, 5e-3]:
-            for batch_size in [32, 64, 128]:
+    epochs = [i for i in range(1, 101)]
+    losses = []
+    accuracies = []
+    labels = []
+    for hidden_state_size in [50, 100, 150]:
+        for lr in [1e-3, 1e-2]:
+            for batch_size in [120, 32]:
                 for grad_clipping in [None, 0.9]:
                     print(
                         f'\n\n\nModel num: {counter}, h_s_size: {hidden_state_size}, lr: {lr}, b_size: {batch_size}, g_clip: {grad_clipping}')
                     counter += 1
                     if counter > 1:
                         break
-                    _, loss = train_AE(28, lr, batch_size, 3, hidden_state_size, grad_clipping, False, "rbr")
+                    curr_losses, curr_accuracies, _, loss = train_AE(set, 28, lr, batch_size, len(epochs),
+                                                                     hidden_state_size, grad_clipping, False, "rbr")
+                    labels.append(f'h s: {hidden_state_size}, lr: {lr}, bt s: {batch_size}, clip: {grad_clipping}')
+                    losses.append(curr_losses)
+                    accuracies.append(curr_accuracies)
+                    axis = util.initiate_graph(1, 2)
+                    util.plot_multi_graph(axis, 0, 0, epochs, losses, labels,
+                                          "MNIST - Row by Row\nLSTM Autoencoder Models - Loss", "epoch",
+                                          "loss", 1)
+                    util.plot_multi_graph(axis, 1, 0, epochs, accuracies, labels,
+                                          "MNIST - Row by Row\nLSTM Autoencoder Models - Accuracy", "epoch",
+                                          "accuracy", 1)
+                    plt.show()
                     if loss < best_loss:
                         best_loss = loss
                         describe_model = (counter, hidden_state_size, lr, batch_size, grad_clipping, loss)
@@ -131,18 +163,21 @@ def grid_search():
 
 
 # Todo: Testing = Taking the RMSE?
-def test_model(model):
-    # testloader = DataLoader(testset, batch_size=testset.size()[0], shuffle=False)
-    loss = torch.nn.MSELoss()
-    # Test the model on the test-data
+def test_model(model, testset):
+    convertor = lambda x: reshape_row_by_row(x, 1000)
+    eval_train_loader = DataLoader(testset, batch_size=1000, shuffle=False)
     model.eval()  # Change flag in parent model from true to false (train-flag).
-    total_loss = 0
-    # with torch.no_grad():  # Everything below - will not calculate the gradients.
-    # for data in testset:
-    # Apply model (forward pass).
-    # outputs = model(testset)
+    size = len(testset)
+    accuracy = 0
+    for i, (data, target) in enumerate(eval_train_loader):
+        # if i > 50: break
+        data = convertor(data)
+        _, output_classify = model(data)
+        temp1 = np.argmax(output_classify.detach().numpy(), axis=1)
+        temp2 = target.detach().numpy()
+        accuracy += sum(temp1 == temp2)
 
-    # total_loss += loss(testset, outputs)  # MSELoss of the output and data
+    return accuracy / size
 
 
 def imshow(img):
@@ -156,8 +191,8 @@ transform = transforms.Compose(
     [transforms.ToTensor(),
      transforms.Normalize((.5,), (.5,))])
 
-trainset = torchvision.datasets.MNIST('./mnist_data/', train=True, download=True, transform=transform)
-testset = torchvision.datasets.MNIST('./mnist_data/', train=False, download=True, transform=transform)
+trainset = torchvision.datasets.MNIST('./data', train=True, download=True, transform=transform)
+testset = torchvision.datasets.MNIST('./data', train=False, download=True, transform=transform)
 
 # grid_search()
 # model = torch.load("saved_models/mnist_task/ae_mnist_Adam_lr=0.01_hidden_size=30_gradient_clipping=None_batch_size32_epoch2_best_epoch1_best_loss310.1443293467164_isreconstructTrue.pt")
@@ -170,17 +205,22 @@ testset = torchvision.datasets.MNIST('./mnist_data/', train=False, download=True
 #         imshow(new_data.detach().numpy())
 #     break
 
-grid_search()
+# grid_search(trainset)
 
-"""
-model = torch.load("saved_models/mnist_task/ae_mnist_Adam_lr=0.01_hidden_size=30_gradient_clipping=None_batch_size32_epoch3_best_epoch2_best_loss1098.8780343830585_isreconstructFalse.pt")
-trainloader = torch.utils.data.DataLoader(trainset, batch_size=1, shuffle=True)
+
+model = torch.load('saved_models/mnist_task/ae_mnist_Adam_lr=0.001_hidden_size=50_gradient_clipping=None_batch_size120_epoch100_best_epoch99_best_loss37.803214497864246_isreconstructFalse.pt')
+
+trainloader = torch.utils.data.DataLoader(testset, batch_size=1, shuffle=True)
+model.train(False)
 for i, (data, target) in enumerate(trainloader):
-    if not i:
+    if i == 510:
         imshow(data[0])
         data = reshape_row_by_row(data, 1)
         new_data, cls = model(data)
         x = torch.tensor(np.argmax(cls.detach().numpy(), axis=1))
+        print(x)
         imshow(new_data.detach().numpy())
-    break
-"""
+        break
+
+
+# print(f'Test Set accuracy: {test_model(model, testset)}')
