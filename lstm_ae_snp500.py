@@ -14,7 +14,10 @@ def set_seed(seed):
     torch.backends.cudnn.benchmark = False
     torch.manual_seed(seed)
     np.random.seed(seed)
+
+
 set_seed(0)
+
 
 class LSTM_ae_snp500(nn.Module):
     def __init__(self, input_size, hidden_size):
@@ -27,21 +30,21 @@ class LSTM_ae_snp500(nn.Module):
         self.linear = nn.Linear(hidden_size, input_size, bias=False)
         # self.pred = nn.Linear..?
 
-
     def forward(self, x):
         output, (_, _) = self.encoder.forward(x)  # z is the last hidden state of the encoder.
         z = output[:, -1].repeat(1, output.shape[1]).view(output.shape)
         z2, (_, _) = self.decoder.forward(z)  # z2 is the last hidden state of the decoder.
         out1 = self.linear(z2)
         # out2 = prediction..
-        return out1 #, out2
+        return out1  # , out2
+
 
 # Get data
 data = pd.read_csv('snp500_data/SP 500 Stock Prices 2014-2017.csv')
 data = data[['symbol', 'high']]
 names = data['symbol'].unique()
-tss = []                            # An array of all the time-series (per symbol).
-bad = []                            # An array of all the bad time-series - length not 1007.
+tss = []  # An array of all the time-series (per symbol).
+bad = []  # An array of all the bad time-series - length not 1007.
 for name in names:
     ts = data[data['symbol'] == name]['high']
     if not len(ts.values) == 1007 or np.isnan(ts).sum() != 0:
@@ -52,10 +55,10 @@ tss = np.array(tss)
 orig_tss = tss.copy()
 
 
-
 # Normalize the data, with the min-max normalization.
 def min_max_norm(val, min, max):
-    return (val-min) / (max - min)
+    return (val - min) / (max - min)
+
 
 """class NormMinMax:
     def __init__(self, min, max):
@@ -114,9 +117,12 @@ train = tss[:train_limit, :]
 validation = tss[train_limit:validation_limit, :]
 test = tss[validation_limit:, :]
 
-trainset = torch.tensor(train, dtype=torch.float32).view(len(train), len(train[0]), 1)       # Tensor of shape: (batch_size, seq_len, input_len) = (int(477*0.8), 1007, 1)
-validationset = torch.tensor(validation, dtype=torch.float32).view(len(validation), len(validation[0]), 1)       # Tensor of shape: (batch_size, seq_len, input_len) = (int(477*0.2), 1007, 1)
-testset = torch.tensor(test, dtype=torch.float32).view(len(test), len(test[0]), 1)       # Tensor of shape (approximately here): (batch_size, seq_len, input_len) = (int(477*0.2), 1007, 1)
+trainset = torch.tensor(train, dtype=torch.float32).view(len(train), len(train[0]),
+                                                         1)  # Tensor of shape: (batch_size, seq_len, input_len) = (int(477*0.8), 1007, 1)
+validationset = torch.tensor(validation, dtype=torch.float32).view(len(validation), len(validation[0]),
+                                                                   1)  # Tensor of shape: (batch_size, seq_len, input_len) = (int(477*0.2), 1007, 1)
+testset = torch.tensor(test, dtype=torch.float32).view(len(test), len(test[0]),
+                                                       1)  # Tensor of shape (approximately here): (batch_size, seq_len, input_len) = (int(477*0.2), 1007, 1)
 
 
 def train_AE(lr, batch_size, epochs, hidden_size, clip=None, optimizer=None):
@@ -161,7 +167,8 @@ def grid_search():
             for batch_size in [5]:
                 # for grad_clipping in [None, 0.9]:
                 for grad_clipping in [1]:
-                    print(f'\n\n\nModel num: {counter}, h_s_size: {hidden_state_size}, lr: {lr}, b_size: {batch_size}, g_clip: {grad_clipping}')
+                    print(
+                        f'\n\n\nModel num: {counter}, h_s_size: {hidden_state_size}, lr: {lr}, b_size: {batch_size}, g_clip: {grad_clipping}')
                     # counter += 1
                     # if counter < 43:
                     #     continue
@@ -253,8 +260,6 @@ def check_some_ts(model):
         plt.show()
 
 
-
-
 # plot_google_amazon_high_stocks()
 grid_search()
 
@@ -262,7 +267,6 @@ grid_search()
 # check_some_ts(model)
 # print(test_train(model))
 # check_some_ts(model)
-
 
 
 """def plot_orig_and_reconstructed(model, ind):
@@ -276,19 +280,3 @@ grid_search()
     plt.plot(xs, ys, label=f'orig')
     plt.plot(xs, ys_ae, label=f'rec')
     plt.title(f'Original and reconstructed signals - ind={ind}')"""
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
