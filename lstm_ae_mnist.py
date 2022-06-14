@@ -213,7 +213,7 @@ model = torch.load('saved_models/mnist_task/ae_mnist_Adam_lr=0.001_hidden_size=5
 trainloader = torch.utils.data.DataLoader(testset, batch_size=1, shuffle=True)
 model.train(False)
 for i, (data, target) in enumerate(trainloader):
-    if i == 510:
+    if i == 891:
         imshow(data[0])
         data = reshape_row_by_row(data, 1)
         new_data, cls = model(data)
