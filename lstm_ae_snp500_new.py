@@ -25,7 +25,7 @@ class LSTM_ae_snp500(nn.Module):
         self.encoder = nn.LSTM(input_size, hidden_size, batch_first=True)
         self.decoder = nn.LSTM(hidden_size, hidden_size, batch_first=True)
         self.linear = nn.Linear(hidden_size, input_size, bias=False)
-        # self.pred = nn.Linear..?
+        self.pred = nn.Linear(hidden_size, input_size, bias=False)
 
 
     def forward(self, x):
@@ -33,8 +33,8 @@ class LSTM_ae_snp500(nn.Module):
         z = output[:, -1].repeat(1, output.shape[1]).view(output.shape)
         z2, (_, _) = self.decoder.forward(z)  # z2 is the last hidden state of the decoder.
         out1 = self.linear(z2)
-        # out2 = prediction..
-        return out1 #, out2
+        out2 = self.pred(z2)
+        return out1, out2
 
 # Get data
 data = pd.read_csv('snp500_data/SP 500 Stock Prices 2014-2017.csv')
@@ -153,9 +153,9 @@ def train_AE(lr, batch_size, epochs, hidden_size, clip=None, optimizer=None):
         curr_loss_pred = 0.0
         for i, data in enumerate(trainLoader):
             opt.zero_grad()
-            output = model(data)
-            l_rec = critereon1(data, output)
-            l_pred = critereon1(pred-??, output)        # Todo: Need to get the right targets here...
+            output_rec, output_pred = model(data)
+            l_rec = critereon1(data, output_rec)
+            l_pred = critereon1(pred-??, output_pred)        # Todo: Need to get the right targets here...
             loss = l_rec + l_pred
             curr_loss_rec += l_rec.item()
             curr_loss_pred += l_pred.item()

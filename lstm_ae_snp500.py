@@ -153,13 +153,9 @@ def grid_search():
     counter = 0
     best_loss = float('inf')
     describe_model = None
-    # for hidden_state_size in [30, 50, 100, 150]:
     for hidden_state_size in [300]:
-        # for lr in [1e-2, 1e-3, 5e-3]:
         for lr in [2e-3]:
-            # for batch_size in [32, 64, 128]:
             for batch_size in [5]:
-                # for grad_clipping in [None, 0.9]:
                 for grad_clipping in [1]:
                     print(f'\n\n\nModel num: {counter}, h_s_size: {hidden_state_size}, lr: {lr}, b_size: {batch_size}, g_clip: {grad_clipping}')
                     # counter += 1

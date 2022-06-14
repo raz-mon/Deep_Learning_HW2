@@ -136,9 +136,9 @@ def test_model(model):
 
 set_seed(0)
 trainset, validationset, testset = generate_synth_data(10000, 50)  # Generate synthetic data.
-grid_search()
+# grid_search()
 
-# model = torch.load("saved_models/toy_task/ae_toy_Adam_lr=0.002_hidden_size=30_gradient_clipping=7_batch_size250_epoch100_best_epoch99_best_loss1.402102068066597.pt")
+model = torch.load("saved_models/toy_task/ae_toy_Adam_lr=0.002_hidden_size=30_gradient_clipping=7_batch_size250_epoch400_best_epoch392_best_loss1.0815917067229748.pt")
 def check_some_ts(model):
     xs = np.arange(0, 50, 1)
     for ind in [0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900, 950, 1000]:
@@ -152,7 +152,7 @@ def check_some_ts(model):
         plt.title(f'Original and reconstructed signals - ind={ind}')
         plt.legend()
         plt.show()
-# check_some_ts(model)
+check_some_ts(model)
 
 # print(test_validation(model))
 # print(test_model(model))
