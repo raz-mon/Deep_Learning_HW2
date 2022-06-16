@@ -25,16 +25,16 @@ class LSTM_ae_snp500(nn.Module):
         self.encoder = nn.LSTM(input_size, hidden_size, batch_first=True)
         self.decoder = nn.LSTM(hidden_size, hidden_size, batch_first=True)
         self.linear = nn.Linear(hidden_size, input_size, bias=False)
-        # self.pred = nn.Linear..?
+        self.pred = nn.Linear(hidden_size, input_size, bias=False)
 
 
     def forward(self, x):
         output, (_, _) = self.encoder.forward(x)  # z is the last hidden state of the encoder.
         z = output[:, -1].repeat(1, output.shape[1]).view(output.shape)
         z2, (_, _) = self.decoder.forward(z)  # z2 is the last hidden state of the decoder.
-        out1 = self.linear(z2)
-        # out2 = prediction..
-        return out1 #, out2
+        rec = self.linear(z2)
+        pred = self.pred(z2[:, 1:, :])
+        return rec, pred
 
 # Get data
 data = pd.read_csv('snp500_data/SP 500 Stock Prices 2014-2017.csv')
@@ -50,8 +50,6 @@ for name in names:
     tss += [ts.values]
 tss = np.array(tss)
 orig_tss = tss.copy()
-
-
 
 # Normalize the data, with the min-max normalization.
 def min_max_norm(val, min, max):
@@ -118,6 +116,24 @@ trainset = torch.tensor(train, dtype=torch.float32).view(len(train), len(train[0
 validationset = torch.tensor(validation, dtype=torch.float32).view(len(validation), len(validation[0]), 1)       # Tensor of shape: (batch_size, seq_len, input_len) = (int(477*0.2), 1007, 1)
 testset = torch.tensor(test, dtype=torch.float32).view(len(test), len(test[0]), 1)       # Tensor of shape (approximately here): (batch_size, seq_len, input_len) = (int(477*0.2), 1007, 1)
 
+# Data for prediction:
+pred_train = trainset[:, :-1, :]
+pred_validation = validationset[:, :-1, :]
+pred_test = testset[:, :-1, :]
+# pred_trainset = torch.tensor(pred_train, dtype=torch.float32).view(len(pred_train), len(pred_train[0]), 1)
+# pred_validationset = torch.tensor(pred_validation, dtype=torch.float32).view(len(pred_validation), len(pred_validation[0]), 1)
+# pred_testset = torch.tensor(pred_test, dtype=torch.float32).view(len(pred_test), len(pred_test[0]), 1)
+
+pred_train_correct = trainset[:, 1:, :]
+pred_validation_correct = validationset[:, 1:, :]
+pred_test_correct = testset[:, 1:, :]
+# pred_trainset_correct = torch.tensor(pred_train_correct, dtype=torch.float32).view(len(pred_train_correct), len(pred_train_correct[0]), 1)
+# pred_validationset_correct = torch.tensor(pred_validation_correct, dtype=torch.float32).view(len(pred_validation_correct), len(pred_validation_correct[0]), 1)
+# pred_testset_correct = torch.tensor(pred_test_correct, dtype=torch.float32).view(len(pred_test_correct), len(pred_test_correct[0]), 1)
+
+
+# Todo: use these targets to penalize as the assignment instructs.
+
 
 def train_AE(lr, batch_size, epochs, hidden_size, clip=None, optimizer=None):
     trainLoader = DataLoader(trainset, batch_size=batch_size, shuffle=True)
@@ -128,54 +144,65 @@ def train_AE(lr, batch_size, epochs, hidden_size, clip=None, optimizer=None):
     else:
         opt = optimizer
     critereon1 = nn.MSELoss()
-    total_loss = 0.0
+    total_loss = []
+    rec_loss = []
+    pred_loss = []
 
     for epoch in range(epochs):
-        total_loss = 0.0
-
+        curr_tot_loss = 0.0
+        curr_loss_rec = 0.0
+        curr_loss_pred = 0.0
         for i, data in enumerate(trainLoader):
+            correct_preds = data[:, 1:, :]
+
             opt.zero_grad()
-            output = model(data)
-            loss = critereon1(data, output)
-            total_loss += loss.item()
+            output_rec, output_pred = model(data)
+            l_rec = critereon1(data, output_rec)
+            l_pred = critereon1(correct_preds, output_pred)
+            loss = l_rec + l_pred
+            curr_loss_rec += l_rec.item()
+            curr_loss_pred += l_pred.item()
+            curr_tot_loss += l_rec.item() + l_pred.item()
             loss.backward()
             if clip is not None:
                 clip_grad_norm_(model.parameters(), max_norm=clip)
             opt.step()
 
-        print(f'epoch {epoch}, loss: {total_loss}')
+        total_loss += [curr_tot_loss]
+        rec_loss += [curr_loss_rec]
+        pred_loss += [curr_loss_pred]
+        print(f'epoch {epoch}, loss: {total_loss[-1]}')
 
-    return model, total_loss
+    return model, total_loss, rec_loss, pred_loss
 
 
 # Perform grid-search for the best hyper-parameters on the validation-set
 def grid_search():
-    counter = 0
     best_loss = float('inf')
     describe_model = None
     for hidden_state_size in [300]:
         for lr in [2e-3]:
-            for batch_size in [5]:
-                for grad_clipping in [1]:
-                    print(f'\n\n\nModel num: {counter}, h_s_size: {hidden_state_size}, lr: {lr}, b_size: {batch_size}, g_clip: {grad_clipping}')
-                    # counter += 1
-                    # if counter < 43:
-                    #     continue
-                    epochs = 40
-                    model, loss = train_AE(lr, batch_size, epochs, hidden_state_size, grad_clipping)
-                    if loss < best_loss:
-                        best_loss = loss
-                        describe_model = (counter, hidden_state_size, lr, batch_size, grad_clipping, loss)
-                    validation_lost = test_validation(model)
+            for batch_size in [4]:
+                for grad_clipping in [3]:
+                    print(f'\n\n\nh_s_size: {hidden_state_size}, lr: {lr}, b_size: {batch_size}, g_clip: {grad_clipping}')
+                    epochs = 2
+                    model, loss, rec_loss, pred_loss = train_AE(lr, batch_size, epochs, hidden_state_size, grad_clipping)
+                    savefigs(rec_loss, pred_loss, hidden_state_size, lr, batch_size, grad_clipping, epochs)
+
+                    validation_loss = test_validation(model)
+
+                    if validation_loss < best_loss:
+                        best_loss = validation_loss
+                        describe_model = (hidden_state_size, lr, batch_size, grad_clipping, epochs, validation_loss)
 
                     # save the model:
                     file_name = f'ae_snp500_{"Adam"}_lr={lr}_hidden_size={hidden_state_size}_gradient_clipping={grad_clipping}_batch_size{batch_size}' \
-                                f'_epoch{epochs}_validation_loss_{validation_lost}'
+                                f'_epoch{epochs}_validation_loss_{validation_loss}'
                     path = os.path.join("saved_models", "snp500")
                     # create_folders(path)
                     torch.save(model, os.path.join(path, file_name + '.pt'))
 
-    # print("best model {} params:\nhidden state: {}\nlearning state: {}\nbatch size: {}\ngrad clipping: {}\nloss: {}".format(*describe_model))
+    print("best model params:\nhidden state: {}\nlearning state: {}\nbatch size: {}\ngrad clipping: {}\nepochs: {}\nvalidation loss: {}".format(*describe_model))
 
 
 def test_validation(model, batch_size=None):
@@ -183,8 +210,8 @@ def test_validation(model, batch_size=None):
     loss = torch.nn.MSELoss()
     model.eval()
     with torch.no_grad():
-        output = model(validationset)
-        curr_loss = loss(validationset, output)  # print("Accuracy: {:.4f}".format(acc))
+        rec_output, pred_output = model(validationset)
+        curr_loss = loss(validationset, rec_output) + loss(validationset[:, 1:, :], pred_output)  # print("Accuracy: {:.4f}".format(acc))
     # print(f"validation loss = {curr_loss.item()}")
     model.train()
     return curr_loss.item()
@@ -232,32 +259,54 @@ def plot_google_amazon_high_stocks():
     plt.savefig('figures/Part3/GOOGL_AMZN_daily_max.png')
     plt.show()
 
+# plot_google_amazon_high_stocks()
 
 def check_some_ts(model):
     xs = np.arange(0, 1007, 1)
     for ind in [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 95]:
         ys = testset[ind, :, :]
         model.eval()
-        ys_ae = model(ys).view(1007).detach().numpy()
+        ys_rec, ys_pred = model(ys.view(1, len(ys), 1))
+        ys_rec = ys_rec.view(1007).detach().numpy()
+        ys_pred = ys_pred.view(1006).detach().numpy()
         # ys_ae = unnormalize_ts(ys_ae, ind + int(len(orig_tss) * 0.8))
         model.train()
         ys = ys.view(1007).detach().numpy()
         plt.plot(xs, ys, label=f'orig')
-        plt.plot(xs, ys_ae, label=f'rec')
-        plt.title(f'Original and reconstructed signals - ind={ind}')
+        plt.plot(xs, ys_rec, label=f'rec')
+        plt.plot(xs[:-1], ys_pred, label=f'pred')
+        plt.title(f'Original, reconstructed and predicted signals - ind={ind}')
         plt.legend()
         plt.show()
 
 
+def savefigs(rec_loss, pred_loss, hidden_state_size, lr, batch_size, grad_clipping, epochs):
+    xs = np.arange(0, len(rec_loss), 1)
+
+    plt.figure()
+    plt.plot(xs, rec_loss, label='reconstruction loss vs. epochs')
+    plt.title('Reconstruction loss vs. epochs')
+    plt.legend()
+    plt.savefig(f'figures/Part3/rec_epochs_hidden_{hidden_state_size}_lr_{lr}_batchSize_{batch_size}_gradClip_{grad_clipping}_epochs_{epochs}.png')
+
+    plt.figure()
+    plt.plot(xs, pred_loss)
+    plt.title('Prediction loss vs. epochs')
+    plt.legend()
+    plt.savefig(f'figures/Part3/pred_epochs_hidden_{hidden_state_size}_lr_{lr}_batchSize_{batch_size}_gradClip_{grad_clipping}_epochs_{epochs}.png')
+
+    # plt.show()
 
 
-# plot_google_amazon_high_stocks()
-grid_search()
 
-# model = torch.load("saved_models/snp500/ae_snp500_Adam_lr=0.002_hidden_size=100_gradient_clipping=0.9_batch_size50_epoch40_validation_loss_0.06462101638317108.pt")
-# check_some_ts(model)
-# print(test_train(model))
-# check_some_ts(model)
+
+
+# grid_search()
+
+model = torch.load("saved_models/snp500/ae_snp500_Adam_lr=0.002_hidden_size=20_gradient_clipping=3_batch_size100_epoch2_validation_loss_0.42832058668136597.pt")
+check_some_ts(model)
+
+
 
 
 
