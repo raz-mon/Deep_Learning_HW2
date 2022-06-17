@@ -60,9 +60,6 @@ def train_AE(lr: float, batch_size: int, epochs: int, hidden_size, clip: bool = 
             opt.zero_grad()
             output = model(data)
             loss = criterion(data, output)
-            plt.plot([i for i in range(len(data[0]))], data[0].detach().numpy())
-            plt.plot([i for i in range(len(data[0]))], output[0].detach().numpy())
-            plt.show()
             total_loss += loss.item()
             loss.backward()
             if clip is not None:
@@ -91,24 +88,21 @@ def grid_search():
     counter = 0
     best_loss = float('inf')
     describe_model = None
-    # for hidden_state_size in [30, 50, 100, 150]:
-    for hidden_state_size in [30]:
-        # for lr in [1e-2, 1e-3, 5e-3]:
+    for hidden_state_size in [42]:
         for lr in [2e-3]:
-            # for batch_size in [32, 64, 128]:
-            for batch_size in [250]:
-                # for grad_clipping in [None, 0.9]:
-                for grad_clipping in [7]:
-                    print(f'\n\n\nModel num: {counter}, h_s_size: {hidden_state_size}, lr: {lr}, b_size: {batch_size}, g_clip: {grad_clipping}')
+            for batch_size in [4]:
+                for grad_clipping in [3]:
+                    epochs = 400
+                    print(f'\n\n\nModel num: {counter}, h_s_size: {hidden_state_size}, lr: {lr}, b_size: {batch_size}, g_clip: {grad_clipping},'
+                          f' epochs: {epochs}')
                     # counter += 1
                     # if counter < 43:
                     #     continue
-                    epochs = 400
                     _, loss = train_AE(lr, batch_size, epochs, hidden_state_size, grad_clipping)
                     if loss < best_loss:
                         best_loss = loss
                         describe_model = (counter, hidden_state_size, lr, batch_size, grad_clipping, loss)
-                    # Todo: Check how this model works on the validation set.
+                    # Todo: Check loss on validation set, and save that as well.
     print("best model {} params:\nhidden state: {}\nlearning state: {}\nbatch size: {}\ngrad clipping: {}\nloss: {}".format(*describe_model))
 
 
@@ -141,7 +135,7 @@ set_seed(0)
 trainset, validationset, testset = generate_synth_data(10000, 50)  # Generate synthetic data.
 # grid_search()
 
-model = torch.load("saved_models/toy_task/ae_toy_Adam_lr=0.001_hidden_size=100_gradient_clipping=None_batch_size32_epoch600_best_epoch429_best_loss0.09430468556820415.pt")
+model = torch.load("saved_models/toy_task/ae_toy_Adam_lr=0.002_hidden_size=42_gradient_clipping=3_batch_size4_epoch400_best_epoch398_best_loss1.841987241699826.pt")
 def check_some_ts(model):
     xs = np.arange(0, 50, 1)
     for ind in [0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900, 950, 1000]:
@@ -164,7 +158,7 @@ check_some_ts(model)
 
 # model = train_AE(1e-3, 30, 20)
 # test_model(model)
-# model = torch.load("ssaved_models/toy_task/ae_toy_Adam_lr=0.0001_hidden_size=30_gradient_clipping=0.9_batch_size32_epoch600_best_epoch598_best_loss10.493612930178642.pt")
+#model = torch.load("saved_models/toy_task/ae_toy_Adam_lr=0.01_hidden_size=30__gradient_clipping=0.9_batch_size64_epoch=600.pt")
 # print a ts and a reconstruction of it.
 """
 xs = np.arange(0, 50, 1)
