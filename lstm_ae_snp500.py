@@ -33,8 +33,8 @@ class LSTM_ae_snp500(nn.Module):
         z = output[:, -1].repeat(1, output.shape[1]).view(output.shape)
         z2, (_, _) = self.decoder.forward(z)  # z2 is the last hidden state of the decoder.
         rec = self.linear(z2)
-        pred = self.pred(z2[:, 1:, :])
-        return rec, pred
+        pred = self.pred(z2[:, :-1, :])                                 # [5, 9, 1]
+        return rec, pred                                                # [5, 8, 1]
 
 # Get data
 data = pd.read_csv('snp500_data/SP 500 Stock Prices 2014-2017.csv')
@@ -116,7 +116,7 @@ trainset = torch.tensor(train, dtype=torch.float32).view(len(train), len(train[0
 validationset = torch.tensor(validation, dtype=torch.float32).view(len(validation), len(validation[0]), 1)       # Tensor of shape: (batch_size, seq_len, input_len) = (int(477*0.2), 1007, 1)
 testset = torch.tensor(test, dtype=torch.float32).view(len(test), len(test[0]), 1)       # Tensor of shape (approximately here): (batch_size, seq_len, input_len) = (int(477*0.2), 1007, 1)
 
-# Data for prediction:
+"""# Data for prediction:
 pred_train = trainset[:, :-1, :]
 pred_validation = validationset[:, :-1, :]
 pred_test = testset[:, :-1, :]
@@ -129,10 +129,7 @@ pred_validation_correct = validationset[:, 1:, :]
 pred_test_correct = testset[:, 1:, :]
 # pred_trainset_correct = torch.tensor(pred_train_correct, dtype=torch.float32).view(len(pred_train_correct), len(pred_train_correct[0]), 1)
 # pred_validationset_correct = torch.tensor(pred_validation_correct, dtype=torch.float32).view(len(pred_validation_correct), len(pred_validation_correct[0]), 1)
-# pred_testset_correct = torch.tensor(pred_test_correct, dtype=torch.float32).view(len(pred_test_correct), len(pred_test_correct[0]), 1)
-
-
-# Todo: use these targets to penalize as the assignment instructs.
+# pred_testset_correct = torch.tensor(pred_test_correct, dtype=torch.float32).view(len(pred_test_correct), len(pred_test_correct[0]), 1)"""
 
 
 def train_AE(lr, batch_size, epochs, hidden_size, clip=None, optimizer=None):
@@ -185,7 +182,7 @@ def grid_search():
             for batch_size in [4]:
                 for grad_clipping in [3]:
                     print(f'\n\n\nh_s_size: {hidden_state_size}, lr: {lr}, b_size: {batch_size}, g_clip: {grad_clipping}')
-                    epochs = 2
+                    epochs = 60
                     model, loss, rec_loss, pred_loss = train_AE(lr, batch_size, epochs, hidden_state_size, grad_clipping)
                     savefigs(rec_loss, pred_loss, hidden_state_size, lr, batch_size, grad_clipping, epochs)
 
@@ -196,7 +193,7 @@ def grid_search():
                         describe_model = (hidden_state_size, lr, batch_size, grad_clipping, epochs, validation_loss)
 
                     # save the model:
-                    file_name = f'ae_snp500_{"Adam"}_lr={lr}_hidden_size={hidden_state_size}_gradient_clipping={grad_clipping}_batch_size{batch_size}' \
+                    file_name = f'ae_snp500_pred_{"Adam"}_lr={lr}_hidden_size={hidden_state_size}_gradient_clipping={grad_clipping}_batch_size{batch_size}' \
                                 f'_epoch{epochs}_validation_loss_{validation_loss}'
                     path = os.path.join("saved_models", "snp500")
                     # create_folders(path)
@@ -284,13 +281,13 @@ def savefigs(rec_loss, pred_loss, hidden_state_size, lr, batch_size, grad_clippi
     xs = np.arange(0, len(rec_loss), 1)
 
     plt.figure()
-    plt.plot(xs, rec_loss, label='reconstruction loss vs. epochs')
+    plt.plot(xs, rec_loss, label='Reconstruction loss vs. epochs')
     plt.title('Reconstruction loss vs. epochs')
     plt.legend()
     plt.savefig(f'figures/Part3/rec_epochs_hidden_{hidden_state_size}_lr_{lr}_batchSize_{batch_size}_gradClip_{grad_clipping}_epochs_{epochs}.png')
 
     plt.figure()
-    plt.plot(xs, pred_loss)
+    plt.plot(xs, pred_loss, label='Prediction loss vs. epochs')
     plt.title('Prediction loss vs. epochs')
     plt.legend()
     plt.savefig(f'figures/Part3/pred_epochs_hidden_{hidden_state_size}_lr_{lr}_batchSize_{batch_size}_gradClip_{grad_clipping}_epochs_{epochs}.png')
@@ -301,9 +298,9 @@ def savefigs(rec_loss, pred_loss, hidden_state_size, lr, batch_size, grad_clippi
 
 
 
-# grid_search()
 
-model = torch.load("saved_models/snp500/ae_snp500_Adam_lr=0.002_hidden_size=20_gradient_clipping=3_batch_size100_epoch2_validation_loss_0.42832058668136597.pt")
+# grid_search()
+model = torch.load("saved_models/snp500/ae_snp500_pred_Adam_lr=0.002_hidden_size=300_gradient_clipping=3_batch_size4_epoch60_validation_loss_0.12832608819007874.pt")
 check_some_ts(model)
 
 

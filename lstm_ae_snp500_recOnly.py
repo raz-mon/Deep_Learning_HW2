@@ -158,7 +158,7 @@ def grid_search():
             for batch_size in [5]:
                 for grad_clipping in [2]:
                     print(f'\n\n\nModel num: {counter}, h_s_size: {hidden_state_size}, lr: {lr}, b_size: {batch_size}, g_clip: {grad_clipping}')
-                    epochs = 40
+                    epochs = 60
                     model, loss = train_AE(lr, batch_size, epochs, hidden_state_size, grad_clipping)
 
                     if loss < best_loss:
@@ -167,7 +167,7 @@ def grid_search():
                     validation_lost = test_validation(model)
 
                     # save the model:
-                    file_name = f'ae_snp500_{"Adam"}_lr={lr}_hidden_size={hidden_state_size}_gradient_clipping={grad_clipping}_batch_size{batch_size}' \
+                    file_name = f'ae_snp500_recOnly_{"Adam"}_lr={lr}_hidden_size={hidden_state_size}_gradient_clipping={grad_clipping}_batch_size{batch_size}' \
                                 f'_epoch{epochs}_validation_loss_{validation_lost}'
                     path = os.path.join("saved_models", "snp500")
                     # create_folders(path)
