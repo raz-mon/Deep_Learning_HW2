@@ -47,7 +47,7 @@ for name in names:
     if not len(ts.values) == 1007 or np.isnan(ts).sum() != 0:
         bad += [ts.values]
         continue
-    tss += [ts.values[:500]]
+    tss += [ts.values]
 tss = np.array(tss)
 orig_tss = tss.copy()
 
@@ -177,7 +177,7 @@ def train_AE(lr, batch_size, epochs, hidden_size, clip=None, optimizer=None):
 def grid_search():
     best_loss = float('inf')
     describe_model = None
-    for hidden_state_size in [300]:
+    for hidden_state_size in [500]:
         for lr in [2e-3]:
             for batch_size in [10]:
                 for grad_clipping in [3]:
@@ -259,16 +259,16 @@ def plot_google_amazon_high_stocks():
 # plot_google_amazon_high_stocks()
 
 def check_some_ts(model):
-    xs = np.arange(0, 500, 1)
+    xs = np.arange(0, 1007, 1)
     for ind in [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 95]:
-        ys = testset[ind, :500, :]
+        ys = testset[ind, :, :]
         model.eval()
         ys_rec, ys_pred = model(ys.view(1, len(ys), 1))
-        ys_rec = ys_rec.view(500).detach().numpy()
-        ys_pred = ys_pred.view(499).detach().numpy()
+        ys_rec = ys_rec.view(1007).detach().numpy()
+        ys_pred = ys_pred.view(1006).detach().numpy()
         # ys_ae = unnormalize_ts(ys_ae, ind + int(len(orig_tss) * 0.8))
         model.train()
-        ys = ys.view(500).detach().numpy()
+        ys = ys.view(1007).detach().numpy()
         plt.plot(xs, ys, label=f'orig')
         plt.plot(xs, ys_rec, label=f'rec')
         plt.plot(xs[:-1], ys_pred, label=f'pred')
@@ -283,12 +283,16 @@ def savefigs(rec_loss, pred_loss, hidden_state_size, lr, batch_size, grad_clippi
     plt.figure()
     plt.plot(xs, rec_loss, label='Reconstruction loss vs. epochs')
     plt.title('Reconstruction loss vs. epochs')
+    plt.xlabel('date')
+    plt.ylabel('value')
     plt.legend()
     plt.savefig(f'figures/Part3/rec_epochs_hidden_{hidden_state_size}_lr_{lr}_batchSize_{batch_size}_gradClip_{grad_clipping}_epochs_{epochs}.png')
 
     plt.figure()
     plt.plot(xs, pred_loss, label='Prediction loss vs. epochs')
     plt.title('Prediction loss vs. epochs')
+    plt.xlabel('date')
+    plt.ylabel('value')
     plt.legend()
     plt.savefig(f'figures/Part3/pred_epochs_hidden_{hidden_state_size}_lr_{lr}_batchSize_{batch_size}_gradClip_{grad_clipping}_epochs_{epochs}.png')
 
@@ -299,8 +303,8 @@ def savefigs(rec_loss, pred_loss, hidden_state_size, lr, batch_size, grad_clippi
 
 
 
-grid_search()
-# model = torch.load("saved_models/snp500/ae_snp500_pred_Adam_lr=0.002_hidden_size=300_gradient_clipping=3_batch_size4_epoch60_validation_loss_0.12832608819007874.pt")
+# grid_search()
+# model = torch.load("saved_models/snp500/ae_snp500_pred_Adam_lr=0.002_hidden_size=300_gradient_clipping=3_batch_size10_epoch100_validation_loss_0.097300224006176.pt")
 # check_some_ts(model)
 
 
@@ -318,7 +322,6 @@ grid_search()
     plt.plot(xs, ys, label=f'orig')
     plt.plot(xs, ys_ae, label=f'rec')
     plt.title(f'Original and reconstructed signals - ind={ind}')"""
-
 
 
 
