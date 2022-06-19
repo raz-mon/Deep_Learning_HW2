@@ -39,7 +39,7 @@ class LSTM_AE(nn.Module):
         z = output[:, -1].repeat(1, output.shape[1]).view(output.shape)
         z2, (_, _) = self.decoder.forward(z)  # z2 is the last hidden state of the decoder.
         out = self.linear(z2)
-        # out = torch.sigmoid(out)
+        out = torch.sigmoid(out)
         return out
 
 
@@ -88,10 +88,10 @@ def grid_search():
     counter = 0
     best_loss = float('inf')
     describe_model = None
-    for hidden_state_size in [42]:
+    for hidden_state_size in [43]:
         for lr in [2e-3]:
-            for batch_size in [4]:
-                for grad_clipping in [3]:
+            for batch_size in [8]:
+                for grad_clipping in [2]:
                     epochs = 400
                     print(f'\n\n\nModel num: {counter}, h_s_size: {hidden_state_size}, lr: {lr}, b_size: {batch_size}, g_clip: {grad_clipping},'
                           f' epochs: {epochs}')
@@ -102,7 +102,6 @@ def grid_search():
                     if loss < best_loss:
                         best_loss = loss
                         describe_model = (counter, hidden_state_size, lr, batch_size, grad_clipping, loss)
-                    # Todo: Check loss on validation set, and save that as well.
     print("best model {} params:\nhidden state: {}\nlearning state: {}\nbatch size: {}\ngrad clipping: {}\nloss: {}".format(*describe_model))
 
 
@@ -135,7 +134,7 @@ set_seed(0)
 trainset, validationset, testset = generate_synth_data(10000, 50)  # Generate synthetic data.
 # grid_search()
 
-model = torch.load("saved_models/toy_task/ae_toy_Adam_lr=0.002_hidden_size=42_gradient_clipping=3_batch_size4_epoch400_best_epoch398_best_loss1.841987241699826.pt")
+model = torch.load("saved_models/toy_task/ae_toy_Adam_lr=0.002_hidden_size=43_gradient_clipping=2_batch_size8_epoch400_best_epoch389_best_loss7.357016638852656.pt")
 def check_some_ts(model):
     xs = np.arange(0, 50, 1)
     for ind in [0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900, 950, 1000]:
@@ -146,6 +145,8 @@ def check_some_ts(model):
         ys = ys.view(50).detach().numpy()
         plt.plot(xs, ys, label=f'orig')
         plt.plot(xs, ys_ae, label=f'rec')
+        plt.xlabel('time')
+        plt.ylabel('value')
         plt.title(f'Original and reconstructed signals - ind={ind}')
         plt.legend()
         plt.show()
