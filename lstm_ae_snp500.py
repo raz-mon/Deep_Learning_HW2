@@ -182,7 +182,7 @@ def grid_search():
             for batch_size in [10]:
                 for grad_clipping in [3]:
                     print(f'\n\n\nh_s_size: {hidden_state_size}, lr: {lr}, b_size: {batch_size}, g_clip: {grad_clipping}')
-                    epochs = 100
+                    epochs = 70
                     model, loss, rec_loss, pred_loss = train_AE(lr, batch_size, epochs, hidden_state_size, grad_clipping)
                     savefigs(rec_loss, pred_loss, hidden_state_size, lr, batch_size, grad_clipping, epochs)
 
@@ -303,7 +303,7 @@ def savefigs(rec_loss, pred_loss, hidden_state_size, lr, batch_size, grad_clippi
 
 
 
-# grid_search()
+grid_search()
 # model = torch.load("saved_models/snp500/ae_snp500_pred_Adam_lr=0.002_hidden_size=300_gradient_clipping=3_batch_size10_epoch100_validation_loss_0.097300224006176.pt")
 # check_some_ts(model)
 
