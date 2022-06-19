@@ -14,7 +14,10 @@ def set_seed(seed):
     torch.backends.cudnn.benchmark = False
     torch.manual_seed(seed)
     np.random.seed(seed)
+
+
 set_seed(0)
+
 
 class LSTM_ae_snp500(nn.Module):
     def __init__(self, input_size, hidden_size):
@@ -27,21 +30,21 @@ class LSTM_ae_snp500(nn.Module):
         self.linear = nn.Linear(hidden_size, input_size, bias=False)
         self.pred = nn.Linear(hidden_size, input_size, bias=False)
 
-
     def forward(self, x):
         output, (_, _) = self.encoder.forward(x)  # z is the last hidden state of the encoder.
         z = output[:, -1].repeat(1, output.shape[1]).view(output.shape)
         z2, (_, _) = self.decoder.forward(z)  # z2 is the last hidden state of the decoder.
         rec = self.linear(z2)
-        pred = self.pred(z2[:, 1:, :])
+        pred = self.pred(z2[:, :-1, :])
         return rec, pred
+
 
 # Get data
 data = pd.read_csv('snp500_data/SP 500 Stock Prices 2014-2017.csv')
 data = data[['symbol', 'high']]
 names = data['symbol'].unique()
-tss = []                            # An array of all the time-series (per symbol).
-bad = []                            # An array of all the bad time-series - length not 1007.
+tss = []  # An array of all the time-series (per symbol).
+bad = []  # An array of all the bad time-series - length not 1007.
 for name in names:
     ts = data[data['symbol'] == name]['high']
     if not len(ts.values) == 1007 or np.isnan(ts).sum() != 0:
@@ -51,9 +54,11 @@ for name in names:
 tss = np.array(tss)
 orig_tss = tss.copy()
 
+
 # Normalize the data, with the min-max normalization.
 def min_max_norm(val, min, max):
-    return (val-min) / (max - min)
+    return (val - min) / (max - min)
+
 
 """class NormMinMax:
     def __init__(self, min, max):
@@ -112,9 +117,12 @@ train = tss[:train_limit, :]
 validation = tss[train_limit:validation_limit, :]
 test = tss[validation_limit:, :]
 
-trainset = torch.tensor(train, dtype=torch.float32).view(len(train), len(train[0]), 1)       # Tensor of shape: (batch_size, seq_len, input_len) = (int(477*0.8), 1007, 1)
-validationset = torch.tensor(validation, dtype=torch.float32).view(len(validation), len(validation[0]), 1)       # Tensor of shape: (batch_size, seq_len, input_len) = (int(477*0.2), 1007, 1)
-testset = torch.tensor(test, dtype=torch.float32).view(len(test), len(test[0]), 1)       # Tensor of shape (approximately here): (batch_size, seq_len, input_len) = (int(477*0.2), 1007, 1)
+trainset = torch.tensor(train, dtype=torch.float32).view(len(train), len(train[0]),
+                                                         1)  # Tensor of shape: (batch_size, seq_len, input_len) = (int(477*0.8), 1007, 1)
+validationset = torch.tensor(validation, dtype=torch.float32).view(len(validation), len(validation[0]),
+                                                                   1)  # Tensor of shape: (batch_size, seq_len, input_len) = (int(477*0.2), 1007, 1)
+testset = torch.tensor(test, dtype=torch.float32).view(len(test), len(test[0]),
+                                                       1)  # Tensor of shape (approximately here): (batch_size, seq_len, input_len) = (int(477*0.2), 1007, 1)
 
 # Data for prediction:
 pred_train = trainset[:, :-1, :]
@@ -127,12 +135,12 @@ pred_test = testset[:, :-1, :]
 pred_train_correct = trainset[:, 1:, :]
 pred_validation_correct = validationset[:, 1:, :]
 pred_test_correct = testset[:, 1:, :]
-# pred_trainset_correct = torch.tensor(pred_train_correct, dtype=torch.float32).view(len(pred_train_correct), len(pred_train_correct[0]), 1)
-# pred_validationset_correct = torch.tensor(pred_validation_correct, dtype=torch.float32).view(len(pred_validation_correct), len(pred_validation_correct[0]), 1)
-# pred_testset_correct = torch.tensor(pred_test_correct, dtype=torch.float32).view(len(pred_test_correct), len(pred_test_correct[0]), 1)
 
 
-# Todo: use these targets to penalize as the assignment instructs.
+# pred_trainset_correct = torch.tensor(pred_train_correct, dtype=torch.float32).view(len(pred_train_correct),
+# len(pred_train_correct[0]), 1) pred_validationset_correct = torch.tensor(pred_validation_correct,
+# dtype=torch.float32).view(len(pred_validation_correct), len(pred_validation_correct[0]), 1) pred_testset_correct =
+# torch.tensor(pred_test_correct, dtype=torch.float32).view(len(pred_test_correct), len(pred_test_correct[0]), 1)
 
 
 def train_AE(lr, batch_size, epochs, hidden_size, clip=None, optimizer=None):
@@ -184,9 +192,11 @@ def grid_search():
         for lr in [2e-3]:
             for batch_size in [4]:
                 for grad_clipping in [3]:
-                    print(f'\n\n\nh_s_size: {hidden_state_size}, lr: {lr}, b_size: {batch_size}, g_clip: {grad_clipping}')
+                    print(
+                        f'\n\n\nh_s_size: {hidden_state_size}, lr: {lr}, b_size: {batch_size}, g_clip: {grad_clipping}')
                     epochs = 2
-                    model, loss, rec_loss, pred_loss = train_AE(lr, batch_size, epochs, hidden_state_size, grad_clipping)
+                    model, loss, rec_loss, pred_loss = train_AE(lr, batch_size, epochs, hidden_state_size,
+                                                                grad_clipping)
                     savefigs(rec_loss, pred_loss, hidden_state_size, lr, batch_size, grad_clipping, epochs)
 
                     validation_loss = test_validation(model)
@@ -202,7 +212,9 @@ def grid_search():
                     # create_folders(path)
                     torch.save(model, os.path.join(path, file_name + '.pt'))
 
-    print("best model params:\nhidden state: {}\nlearning state: {}\nbatch size: {}\ngrad clipping: {}\nepochs: {}\nvalidation loss: {}".format(*describe_model))
+    print(
+        "best model params:\nhidden state: {}\nlearning state: {}\nbatch size: {}\ngrad clipping: {}\nepochs: {}\nvalidation loss: {}".format(
+            *describe_model))
 
 
 def test_validation(model, batch_size=None):
@@ -211,7 +223,8 @@ def test_validation(model, batch_size=None):
     model.eval()
     with torch.no_grad():
         rec_output, pred_output = model(validationset)
-        curr_loss = loss(validationset, rec_output) + loss(validationset[:, 1:, :], pred_output)  # print("Accuracy: {:.4f}".format(acc))
+        curr_loss = loss(validationset, rec_output) + loss(validationset[:, 1:, :],
+                                                           pred_output)  # print("Accuracy: {:.4f}".format(acc))
     # print(f"validation loss = {curr_loss.item()}")
     model.train()
     return curr_loss.item()
@@ -259,6 +272,7 @@ def plot_google_amazon_high_stocks():
     plt.savefig('figures/Part3/GOOGL_AMZN_daily_max.png')
     plt.show()
 
+
 # plot_google_amazon_high_stocks()
 
 def check_some_ts(model):
@@ -287,30 +301,26 @@ def savefigs(rec_loss, pred_loss, hidden_state_size, lr, batch_size, grad_clippi
     plt.plot(xs, rec_loss, label='reconstruction loss vs. epochs')
     plt.title('Reconstruction loss vs. epochs')
     plt.legend()
-    plt.savefig(f'figures/Part3/rec_epochs_hidden_{hidden_state_size}_lr_{lr}_batchSize_{batch_size}_gradClip_{grad_clipping}_epochs_{epochs}.png')
+    plt.savefig(
+        f'figures/Part3/rec_epochs_hidden_{hidden_state_size}_lr_{lr}_batchSize_{batch_size}_gradClip_{grad_clipping}_epochs_{epochs}.png')
 
     plt.figure()
     plt.plot(xs, pred_loss)
     plt.title('Prediction loss vs. epochs')
     plt.legend()
-    plt.savefig(f'figures/Part3/pred_epochs_hidden_{hidden_state_size}_lr_{lr}_batchSize_{batch_size}_gradClip_{grad_clipping}_epochs_{epochs}.png')
+    plt.savefig(
+        f'figures/Part3/pred_epochs_hidden_{hidden_state_size}_lr_{lr}_batchSize_{batch_size}_gradClip_{grad_clipping}_epochs_{epochs}.png')
 
     # plt.show()
 
 
-
-
-
-# grid_search()
-
-model = torch.load("saved_models/snp500/ae_snp500_Adam_lr=0.002_hidden_size=20_gradient_clipping=3_batch_size100_epoch2_validation_loss_0.42832058668136597.pt")
+grid_search()
+"""
+model = torch.load(
+    "saved_models/snp500/ae_snp500_Adam_lr=0.002_hidden_size=20_gradient_clipping=3_batch_size100_epoch2_validation_loss_0.42832058668136597.pt")
 check_some_ts(model)
 
-
-
-
-
-"""def plot_orig_and_reconstructed(model, ind):
+def plot_orig_and_reconstructed(model, ind):
     ts = orig_tss[ind, :]
     ts = np.array(ts)
     output = model(ts)
@@ -320,20 +330,5 @@ check_some_ts(model)
     ys = ys.view(50).detach().numpy()
     plt.plot(xs, ys, label=f'orig')
     plt.plot(xs, ys_ae, label=f'rec')
-    plt.title(f'Original and reconstructed signals - ind={ind}')"""
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    plt.title(f'Original and reconstructed signals - ind={ind}')
+"""
