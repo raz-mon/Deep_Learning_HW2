@@ -14,7 +14,10 @@ def set_seed(seed):
     torch.backends.cudnn.benchmark = False
     torch.manual_seed(seed)
     np.random.seed(seed)
+
+
 set_seed(0)
+
 
 class LSTM_ae_snp500(nn.Module):
     def __init__(self, input_size, hidden_size):
@@ -27,33 +30,19 @@ class LSTM_ae_snp500(nn.Module):
         self.linear = nn.Linear(hidden_size, input_size, bias=False)
         self.pred = nn.Linear(hidden_size, input_size, bias=False)
 
-
     def forward(self, x):
         output, (_, _) = self.encoder.forward(x)  # z is the last hidden state of the encoder.
         z = output[:, -1].repeat(1, output.shape[1]).view(output.shape)
         z2, (_, _) = self.decoder.forward(z)  # z2 is the last hidden state of the decoder.
         rec = self.linear(z2)
-        pred = self.pred(z2[:, :-1, :])                                 # [5, 9, 1]
-        return rec, pred                                                # [5, 8, 1]
+        pred = self.pred(z2[:, :-1, :])  # [5, 9, 1]
+        return rec, pred  # [5, 8, 1]
 
-# Get data
-data = pd.read_csv('snp500_data/SP 500 Stock Prices 2014-2017.csv')
-data = data[['symbol', 'high']]
-names = data['symbol'].unique()
-tss = []                            # An array of all the time-series (per symbol).
-bad = []                            # An array of all the bad time-series - length not 1007.
-for name in names:
-    ts = data[data['symbol'] == name]['high']
-    if not len(ts.values) == 1007 or np.isnan(ts).sum() != 0:
-        bad += [ts.values]
-        continue
-    tss += [ts.values]
-tss = np.array(tss)
-orig_tss = tss.copy()
 
 # Normalize the data, with the min-max normalization.
 def min_max_norm(val, min, max):
-    return (val-min) / (max - min)
+    return (val - min) / (max - min)
+
 
 """class NormMinMax:
     def __init__(self, min, max):
@@ -67,12 +56,6 @@ def min_max_norm(val, min, max):
     def unnormalize_ts(self):
         for ind in range(len(ts)):
             ts[ind] = ts[ind] * (self.max - self.min) + self.min"""
-
-for ts in tss:
-    min = np.min(ts)
-    max = np.max(ts)
-    for ind in range(len(ts)):
-        ts[ind] = min_max_norm(ts[ind], min, max)
 
 
 def unnormalize_tss(tss, init_ind):
@@ -103,33 +86,6 @@ def unnormalize_ts(ts, ind):
     for ind in range(len(ts)):
         ret[ind] = ts[ind] * (max - min) + min
     return ret
-
-
-# Partition data to train, validation and test sets.
-train_limit = int(len(tss) * 0.6)
-validation_limit = int(len(tss) * 0.8)
-train = tss[:train_limit, :]
-validation = tss[train_limit:validation_limit, :]
-test = tss[validation_limit:, :]
-
-trainset = torch.tensor(train, dtype=torch.float32).view(len(train), len(train[0]), 1)       # Tensor of shape: (batch_size, seq_len, input_len) = (int(477*0.8), 1007, 1)
-validationset = torch.tensor(validation, dtype=torch.float32).view(len(validation), len(validation[0]), 1)       # Tensor of shape: (batch_size, seq_len, input_len) = (int(477*0.2), 1007, 1)
-testset = torch.tensor(test, dtype=torch.float32).view(len(test), len(test[0]), 1)       # Tensor of shape (approximately here): (batch_size, seq_len, input_len) = (int(477*0.2), 1007, 1)
-
-"""# Data for prediction:
-pred_train = trainset[:, :-1, :]
-pred_validation = validationset[:, :-1, :]
-pred_test = testset[:, :-1, :]
-# pred_trainset = torch.tensor(pred_train, dtype=torch.float32).view(len(pred_train), len(pred_train[0]), 1)
-# pred_validationset = torch.tensor(pred_validation, dtype=torch.float32).view(len(pred_validation), len(pred_validation[0]), 1)
-# pred_testset = torch.tensor(pred_test, dtype=torch.float32).view(len(pred_test), len(pred_test[0]), 1)
-
-pred_train_correct = trainset[:, 1:, :]
-pred_validation_correct = validationset[:, 1:, :]
-pred_test_correct = testset[:, 1:, :]
-# pred_trainset_correct = torch.tensor(pred_train_correct, dtype=torch.float32).view(len(pred_train_correct), len(pred_train_correct[0]), 1)
-# pred_validationset_correct = torch.tensor(pred_validation_correct, dtype=torch.float32).view(len(pred_validation_correct), len(pred_validation_correct[0]), 1)
-# pred_testset_correct = torch.tensor(pred_test_correct, dtype=torch.float32).view(len(pred_test_correct), len(pred_test_correct[0]), 1)"""
 
 
 def train_AE(lr, batch_size, epochs, hidden_size, clip=None, optimizer=None):
@@ -181,9 +137,11 @@ def grid_search():
         for lr in [2e-3]:
             for batch_size in [10]:
                 for grad_clipping in [3]:
-                    print(f'\n\n\nh_s_size: {hidden_state_size}, lr: {lr}, b_size: {batch_size}, g_clip: {grad_clipping}')
+                    print(
+                        f'\n\n\nh_s_size: {hidden_state_size}, lr: {lr}, b_size: {batch_size}, g_clip: {grad_clipping}')
                     epochs = 70
-                    model, loss, rec_loss, pred_loss = train_AE(lr, batch_size, epochs, hidden_state_size, grad_clipping)
+                    model, loss, rec_loss, pred_loss = train_AE(lr, batch_size, epochs, hidden_state_size,
+                                                                grad_clipping)
                     savefigs(rec_loss, pred_loss, hidden_state_size, lr, batch_size, grad_clipping, epochs)
 
                     validation_loss = test_validation(model)
@@ -199,7 +157,9 @@ def grid_search():
                     # create_folders(path)
                     torch.save(model, os.path.join(path, file_name + '.pt'))
 
-    print("best model params:\nhidden state: {}\nlearning state: {}\nbatch size: {}\ngrad clipping: {}\nepochs: {}\nvalidation loss: {}".format(*describe_model))
+    print(
+        "best model params:\nhidden state: {}\nlearning state: {}\nbatch size: {}\ngrad clipping: {}\nepochs: {}\nvalidation loss: {}".format(
+            *describe_model))
 
 
 def test_validation(model, batch_size=None):
@@ -208,7 +168,8 @@ def test_validation(model, batch_size=None):
     model.eval()
     with torch.no_grad():
         rec_output, pred_output = model(validationset)
-        curr_loss = loss(validationset, rec_output) + loss(validationset[:, 1:, :], pred_output)  # print("Accuracy: {:.4f}".format(acc))
+        curr_loss = loss(validationset, rec_output) + loss(validationset[:, 1:, :],
+                                                           pred_output)  # print("Accuracy: {:.4f}".format(acc))
     # print(f"validation loss = {curr_loss.item()}")
     model.train()
     return curr_loss.item()
@@ -256,10 +217,11 @@ def plot_google_amazon_high_stocks():
     plt.savefig('figures/Part3/GOOGL_AMZN_daily_max.png')
     plt.show()
 
-# plot_google_amazon_high_stocks()
 
 def check_some_ts(model):
-    xs = np.arange(0, 1007, 1)
+    data = pd.read_csv('snp500_data/SP 500 Stock Prices 2014-2017.csv')
+    # xs = np.arange(0, 1007, 1)
+    xs = data[data['symbol'] == 'GOOGL']['date']
     for ind in [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 95]:
         ys = testset[ind, :, :]
         model.eval()
@@ -269,10 +231,22 @@ def check_some_ts(model):
         # ys_ae = unnormalize_ts(ys_ae, ind + int(len(orig_tss) * 0.8))
         model.train()
         ys = ys.view(1007).detach().numpy()
-        plt.plot(xs, ys, label=f'orig')
-        plt.plot(xs, ys_rec, label=f'rec')
-        plt.plot(xs[:-1], ys_pred, label=f'pred')
+        ys = unnormalize_ts(ys, ind)
+        ys_rec = unnormalize_ts(ys_rec, ind)
+        ys_pred = unnormalize_ts(ys_pred, ind)
+        df = pd.DataFrame(data={'date': xs, 'ys_orig': ys, 'ys_rec': ys_rec})
+        df2 = pd.DataFrame(data={'date': xs[:-1], 'ys_pred': ys_pred})
+        df.index = df['date']
+        df2.index = df2['date']
+        df['ys_orig'].plot(label='orig')
+        df['ys_rec'].plot(label='rec')
+        df2['ys_pred'].plot(label='pred')
+        # plt.plot(xs, ys, label=f'orig')
+        # plt.plot(xs, ys_rec, label=f'rec')
+        # plt.plot(xs[:-1], ys_pred, label=f'pred')
         plt.title(f'Original, reconstructed and predicted signals - ind={ind}')
+        plt.ylabel('value')
+        plt.xticks(rotation=5)
         plt.legend()
         plt.show()
 
@@ -286,7 +260,8 @@ def savefigs(rec_loss, pred_loss, hidden_state_size, lr, batch_size, grad_clippi
     plt.xlabel('date')
     plt.ylabel('value')
     plt.legend()
-    plt.savefig(f'figures/Part3/rec_epochs_hidden_{hidden_state_size}_lr_{lr}_batchSize_{batch_size}_gradClip_{grad_clipping}_epochs_{epochs}.png')
+    plt.savefig(
+        f'figures/Part3/rec_epochs_hidden_{hidden_state_size}_lr_{lr}_batchSize_{batch_size}_gradClip_{grad_clipping}_epochs_{epochs}.png')
 
     plt.figure()
     plt.plot(xs, pred_loss, label='Prediction loss vs. epochs')
@@ -294,22 +269,90 @@ def savefigs(rec_loss, pred_loss, hidden_state_size, lr, batch_size, grad_clippi
     plt.xlabel('date')
     plt.ylabel('value')
     plt.legend()
-    plt.savefig(f'figures/Part3/pred_epochs_hidden_{hidden_state_size}_lr_{lr}_batchSize_{batch_size}_gradClip_{grad_clipping}_epochs_{epochs}.png')
+    plt.savefig(
+        f'figures/Part3/pred_epochs_hidden_{hidden_state_size}_lr_{lr}_batchSize_{batch_size}_gradClip_{grad_clipping}_epochs_{epochs}.png')
 
     # plt.show()
 
 
+def multi_step_prediction(model):
+    stocks = pd.read_csv('snp500_data/SP 500 Stock Prices 2014-2017.csv')
+    google_stocks = stocks[stocks['symbol'] == 'GOOGL'][["date", "high"]]
+
+    ts = google_stocks['high'].values
+    dates = google_stocks['date']
+    plt.plot(list(dates), list(ts))
+    _, axis1 = plt.subplots(1, 1)
+    axis1.plot(dates, ts)
+    plt.xticks(rotation=30)
+    plt.title("google max stock values, years 2014-2017")
+    plt.legend("google")
+    plt.show()
+
+    past_ts, pred_ts = ts[:, 1:len(ts) // 2, :], ts[:, len(ts) // 2:, :]
+    for _ in range(len(ts) // 2):
+        _, past_ts = model(past_ts)
 
 
+# plot_google_amazon_high_stocks()
 
+# Get data
+"""
+data = pd.read_csv('snp500_data/SP 500 Stock Prices 2014-2017.csv')
+data = data[['symbol', 'high']]
+names = data['symbol'].unique()
+tss = []  # An array of all the time-series (per symbol).
+bad = []  # An array of all the bad time-series - length not 1007.
+for name in names:
+    ts = data[data['symbol'] == name]['high']
+    if not len(ts.values) == 1007 or np.isnan(ts).sum() != 0:
+        bad += [ts.values]
+        continue
+    tss += [ts.values]
+tss = np.array(tss)
+orig_tss = tss.copy()
 
-grid_search()
-# model = torch.load("saved_models/snp500/ae_snp500_pred_Adam_lr=0.002_hidden_size=300_gradient_clipping=3_batch_size10_epoch100_validation_loss_0.097300224006176.pt")
+for ts in tss:
+    min = np.min(ts)
+    max = np.max(ts)
+    for ind in range(len(ts)):
+        ts[ind] = min_max_norm(ts[ind], min, max)
+
+# Partition data to train, validation and test sets.
+train_limit = int(len(tss) * 0.6)
+validation_limit = int(len(tss) * 0.8)
+train = tss[:train_limit, :]
+validation = tss[train_limit:validation_limit, :]
+test = tss[validation_limit:, :]
+
+trainset = torch.tensor(train, dtype=torch.float32).view(len(train), len(train[0]),
+                                                         1)  # Tensor of shape: (batch_size, seq_len, input_len) = (int(477*0.8), 1007, 1)
+validationset = torch.tensor(validation, dtype=torch.float32).view(len(validation), len(validation[0]),
+                                                                   1)  # Tensor of shape: (batch_size, seq_len, input_len) = (int(477*0.2), 1007, 1)
+testset = torch.tensor(test, dtype=torch.float32).view(len(test), len(test[0]),
+                                                       1)  # Tensor of shape (approximately here): (batch_size, seq_len, input_len) = (int(477*0.2), 1007, 1)
+"""
+
+"""# Data for prediction:
+pred_train = trainset[:, :-1, :]
+pred_validation = validationset[:, :-1, :]
+pred_test = testset[:, :-1, :]
+# pred_trainset = torch.tensor(pred_train, dtype=torch.float32).view(len(pred_train), len(pred_train[0]), 1)
+# pred_validationset = torch.tensor(pred_validation, dtype=torch.float32).view(len(pred_validation), len(pred_validation[0]), 1)
+# pred_testset = torch.tensor(pred_test, dtype=torch.float32).view(len(pred_test), len(pred_test[0]), 1)
+
+pred_train_correct = trainset[:, 1:, :]
+pred_validation_correct = validationset[:, 1:, :]
+pred_test_correct = testset[:, 1:, :]
+# pred_trainset_correct = torch.tensor(pred_train_correct, dtype=torch.float32).view(len(pred_train_correct), len(pred_train_correct[0]), 1)
+# pred_validationset_correct = torch.tensor(pred_validation_correct, dtype=torch.float32).view(len(pred_validation_correct), len(pred_validation_correct[0]), 1)
+# pred_testset_correct = torch.tensor(pred_test_correct, dtype=torch.float32).view(len(pred_test_correct), len(pred_test_correct[0]), 1)"""
+
+# grid_search()
+model = torch.load(
+    "saved_models/snp500/ae_snp500_pred_Adam_lr=0.002_hidden_size=300_gradient_clipping=3_batch_size10_epoch100_validation_loss_0.097300224006176.pt")
+multi_step_prediction(model)
 # check_some_ts(model)
-
-
-
-
 
 """def plot_orig_and_reconstructed(model, ind):
     ts = orig_tss[ind, :]
@@ -322,18 +365,3 @@ grid_search()
     plt.plot(xs, ys, label=f'orig')
     plt.plot(xs, ys_ae, label=f'rec')
     plt.title(f'Original and reconstructed signals - ind={ind}')"""
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
