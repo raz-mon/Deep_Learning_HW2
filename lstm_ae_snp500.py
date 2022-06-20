@@ -38,7 +38,7 @@ class LSTM_ae_snp500(nn.Module):
 
 # Get data
 data = pd.read_csv('snp500_data/SP 500 Stock Prices 2014-2017.csv')
-data = data[['symbol', 'high']]
+data = data[['symbol', 'high', 'date']]
 names = data['symbol'].unique()
 tss = []                            # An array of all the time-series (per symbol).
 bad = []                            # An array of all the bad time-series - length not 1007.
@@ -259,7 +259,8 @@ def plot_google_amazon_high_stocks():
 # plot_google_amazon_high_stocks()
 
 def check_some_ts(model):
-    xs = np.arange(0, 1007, 1)
+    # xs = np.arange(0, 1007, 1)
+    xs = data[data['symbol'] == 'GOOGL']['date']
     for ind in [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 95]:
         ys = testset[ind, :, :]
         model.eval()
@@ -269,12 +270,44 @@ def check_some_ts(model):
         # ys_ae = unnormalize_ts(ys_ae, ind + int(len(orig_tss) * 0.8))
         model.train()
         ys = ys.view(1007).detach().numpy()
+        ys = unnormalize_ts(ys, ind)
+        ys_rec = unnormalize_ts(ys_rec, ind)
+        ys_pred = unnormalize_ts(ys_pred, ind)
+        df = pd.DataFrame(data={'date': xs, 'ys_orig': ys, 'ys_rec': ys_rec})
+        df2 = pd.DataFrame(data={'date': xs[:-1], 'ys_pred': ys_pred})
+        df.index = df['date']
+        df2.index = df2['date']
+        df['ys_orig'].plot(label='orig')
+        df['ys_rec'].plot(label='rec')
+        df2['ys_pred'].plot(label='pred')
+        # plt.plot(xs, ys, label=f'orig')
+        # plt.plot(xs, ys_rec, label=f'rec')
+        # plt.plot(xs[:-1], ys_pred, label=f'pred')
+        plt.title(f'Original, reconstructed and predicted signals - ind={ind}')
+        plt.ylabel('value')
+        plt.xticks(rotation=5)
+        plt.legend()
+        plt.show()
+
+
+"""def check_some_ts_half(model):
+    # xs = np.arange(0, 500, 1)
+    xs = data['date'][:500]
+    for ind in [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 95]:
+        ys = testset[ind, :, :]
+        model.eval()
+        ys_rec, ys_pred = model(ys.view(1, len(ys), 1))
+        ys_rec = ys_rec.view(500).detach().numpy()
+        ys_pred = ys_pred.view(499).detach().numpy()
+        # ys_ae = unnormalize_ts(ys_ae, ind + int(len(orig_tss) * 0.8))
+        model.train()
+        ys = ys.view(500).detach().numpy()
         plt.plot(xs, ys, label=f'orig')
         plt.plot(xs, ys_rec, label=f'rec')
         plt.plot(xs[:-1], ys_pred, label=f'pred')
         plt.title(f'Original, reconstructed and predicted signals - ind={ind}')
         plt.legend()
-        plt.show()
+        plt.show()"""
 
 
 def savefigs(rec_loss, pred_loss, hidden_state_size, lr, batch_size, grad_clipping, epochs):
@@ -303,11 +336,12 @@ def savefigs(rec_loss, pred_loss, hidden_state_size, lr, batch_size, grad_clippi
 
 
 
-grid_search()
-# model = torch.load("saved_models/snp500/ae_snp500_pred_Adam_lr=0.002_hidden_size=300_gradient_clipping=3_batch_size10_epoch100_validation_loss_0.097300224006176.pt")
+# grid_search()
+model = torch.load("saved_models/snp500/ae_snp500_pred_Adam_lr=0.002_hidden_size=300_gradient_clipping=3_batch_size10_epoch100_validation_loss_0.097300224006176.pt")
+check_some_ts(model)
+
+# model = torch.load("saved_models/snp500/ae_snp500_pred_Adam_lr=0.002_hidden_size=300_gradient_clipping=3_batch_size4_epoch60_validation_loss_0.12832608819007874.pt")
 # check_some_ts(model)
-
-
 
 
 
