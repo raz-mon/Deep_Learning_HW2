@@ -14,8 +14,6 @@ def set_seed(seed):
     torch.backends.cudnn.benchmark = False
     torch.manual_seed(seed)
     np.random.seed(seed)
-
-
 set_seed(0)
 
 
@@ -35,8 +33,8 @@ class LSTM_ae_snp500(nn.Module):
         z = output[:, -1].repeat(1, output.shape[1]).view(output.shape)
         z2, (_, _) = self.decoder.forward(z)  # z2 is the last hidden state of the decoder.
         rec = self.linear(z2)
-        pred = self.pred(z2[:, :-1, :])  # [5, 9, 1]
-        return rec, pred  # [5, 8, 1]
+        pred = self.pred(z2[:, :, :])
+        return rec, pred
 
 
 # Get data
@@ -58,20 +56,6 @@ orig_tss = tss.copy()
 # Normalize the data, with the min-max normalization.
 def min_max_norm(val, min, max):
     return (val - min) / (max - min)
-
-
-"""class NormMinMax:
-    def __init__(self, min, max):
-        self.min = min
-        self.max = max
-
-    def normalize_ts(self, ts):
-        for ind in range(len(ts)):
-            ts[ind] = min_max_norm(ts[ind], min, max)
-
-    def unnormalize_ts(self):
-        for ind in range(len(ts)):
-            ts[ind] = ts[ind] * (self.max - self.min) + self.min"""
 
 
 def unnormalize_tss(tss, init_ind):
@@ -127,7 +111,7 @@ def train_AE(lr, batch_size, epochs, hidden_size, clip=None, optimizer=None):
             opt.zero_grad()
             output_rec, output_pred = model(data)
             l_rec = critereon1(data, output_rec)
-            l_pred = critereon1(correct_preds, output_pred)
+            l_pred = critereon1(correct_preds, output_pred[:, :-1, :])
             loss = l_rec + l_pred
             curr_loss_rec += l_rec.item()
             curr_loss_pred += l_pred.item()
@@ -184,8 +168,7 @@ def test_validation(model, batch_size=None):
     model.eval()
     with torch.no_grad():
         rec_output, pred_output = model(validationset)
-        curr_loss = loss(validationset, rec_output) + loss(validationset[:, 1:, :],
-                                                           pred_output)  # print("Accuracy: {:.4f}".format(acc))
+        curr_loss = loss(validationset, rec_output) + loss(validationset[:, 1:, :], pred_output[:, :-1, :])  # print("Accuracy: {:.4f}".format(acc))
     # print(f"validation loss = {curr_loss.item()}")
     model.train()
     return curr_loss.item()
@@ -194,24 +177,12 @@ def test_validation(model, batch_size=None):
 def test_model(model):
     # testloader = DataLoader(testset, batch_size=testset.size()[0], shuffle=False)
     loss = torch.nn.MSELoss()
-    model.eval()  # Change flag in parent model from true to false (train-flag).
-    total_loss = 0
-    with torch.no_grad():  # Everything below - will not calculate the gradients.
-        outputs = model(testset)
-        total_loss += loss(testset, outputs)  # MSELoss of the output and data
+    model.eval()
+    with torch.no_grad():
+        rec_output, pred_output = model(validationset)
+        curr_loss = loss(testset, rec_output) + loss(validationset[:, 1:, :], pred_output[:, :-1, :])  # print("Accuracy: {:.4f}".format(acc))
     model.train()
-    return total_loss.item()
-
-
-def test_train(model):
-    loss = torch.nn.MSELoss()
-    model.eval()  # Change flag in parent model from true to false (train-flag).
-    total_loss = 0
-    with torch.no_grad():  # Everything below - will not calculate the gradients.
-        outputs = model(trainset)
-        total_loss += loss(trainset, outputs)  # MSELoss of the output and data
-    model.train()
-    return total_loss.item()
+    return curr_loss.item()
 
 
 def plot_google_amazon_high_stocks():
@@ -243,7 +214,7 @@ def check_some_ts(model):
         model.eval()
         ys_rec, ys_pred = model(ys.view(1, len(ys), 1))
         ys_rec = ys_rec.view(1007).detach().numpy()
-        ys_pred = ys_pred.view(1006).detach().numpy()
+        ys_pred = ys_pred.view(1007).detach().numpy()
         # ys_ae = unnormalize_ts(ys_ae, ind + int(len(orig_tss) * 0.8))
         model.train()
         ys = ys.view(1007).detach().numpy()
