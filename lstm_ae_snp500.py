@@ -280,18 +280,24 @@ def multi_step_prediction(model):
     google_stocks = stocks[stocks['symbol'] == 'GOOGL'][["date", "high"]]
 
     ts = google_stocks['high'].values
-    dates = google_stocks['date']
-    plt.plot(list(dates), list(ts))
-    _, axis1 = plt.subplots(1, 1)
-    axis1.plot(dates, ts)
-    plt.xticks(rotation=30)
-    plt.title("google max stock values, years 2014-2017")
-    plt.legend("google")
-    plt.show()
+    dates = pd.to_datetime(google_stocks['date'])
 
-    past_ts, pred_ts = ts[:, 1:len(ts) // 2, :], ts[:, len(ts) // 2:, :]
+    past_ts = torch.tensor(ts[:len(ts) // 2]).view(1, len(ts) // 2, 1)
+    # pred_ts = torch.tensor(ts[len(ts) // 2:], dtype=torch.float32).view(1, len(ts) // 2, 1)
     for _ in range(len(ts) // 2):
         _, past_ts = model(past_ts)
+
+    temp = list(past_ts.view(len(ts) // 2, 1).detach().numpy().T[0])
+
+    _, axis1 = plt.subplots(1, 1)
+    axis1.plot(list(dates), list(ts))
+    axis1.plot(list(dates), [0] * (len(ts)//2) + temp)
+    plt.xticks(rotation=30)
+    plt.title("google max stock values, years 2014-2017")
+    plt.legend(("google"))
+    plt.show()
+
+    print("done")
 
 
 # plot_google_amazon_high_stocks()
