@@ -80,7 +80,7 @@ def train_AE(set, input, lr: float, batch_size: int, epochs: int, hidden_size, c
         total_loss = 0.0
         for i, (data, target) in enumerate(trainloader):
             print(i)
-            # if i > 50: break
+            # if i > 10: break
             opt.zero_grad()
             data = data.to(device)
             target = target.to(device)
@@ -97,7 +97,7 @@ def train_AE(set, input, lr: float, batch_size: int, epochs: int, hidden_size, c
             opt.step()
         accuracy = 0
         for i, (data, target) in enumerate(trainloader):
-            # if i > 50: break
+            # if i > 10: break
             data = convert(data)
             _, output_classify = model(data)
             temp1 = np.argmax(output_classify.detach().numpy(), axis=1)
@@ -114,7 +114,7 @@ def train_AE(set, input, lr: float, batch_size: int, epochs: int, hidden_size, c
 
     # save the model:
     file_name = f'ae_mnist_{"Adam"}_lr={lr}_hidden_size={hidden_size}_gradient_clipping={clip}_batch_size{batch_size}' \
-                f'_epoch{epochs}_best_epoch{best_epoch}_best_loss{best_loss}_isreconstruct{is_reconstruct}'
+                f'_epoch{epochs}_best_epoch{best_epoch}_best_loss{best_loss}_isreconstruct{is_reconstruct}_pbp'
 
     path = os.path.join("saved_models", "mnist_task")
     # create_folders(path)
@@ -128,30 +128,30 @@ def grid_search(set):
     counter = 0
     best_loss = float('inf')
     describe_model = None
-    epochs = [i for i in range(1, 101)]
+    epochs = [i for i in range(1, 6)]
     losses = []
     accuracies = []
     labels = []
-    for hidden_state_size in [50, 100, 150]:
-        for lr in [1e-3, 1e-2]:
-            for batch_size in [120, 32]:
-                for grad_clipping in [None, 0.9]:
+    for hidden_state_size in [30, 40, 30]:
+        for lr in [3e-3, 1e-2]:
+            for batch_size in [60, 120]:
+                for grad_clipping in [2, 5]:
                     print(
                         f'\n\n\nModel num: {counter}, h_s_size: {hidden_state_size}, lr: {lr}, b_size: {batch_size}, g_clip: {grad_clipping}')
-                    counter += 1
-                    if counter > 1:
-                        break
-                    curr_losses, curr_accuracies, _, loss = train_AE(set, 28, lr, batch_size, len(epochs),
-                                                                     hidden_state_size, grad_clipping, False, "rbr")
+                    #counter += 1
+                    #if counter > 1:
+                    #    break
+                    curr_losses, curr_accuracies, _, loss = train_AE(set, 1, lr, batch_size, len(epochs),
+                                                                     hidden_state_size, grad_clipping, False, "pbp")
                     labels.append(f'h s: {hidden_state_size}, lr: {lr}, bt s: {batch_size}, clip: {grad_clipping}')
                     losses.append(curr_losses)
                     accuracies.append(curr_accuracies)
                     axis = util.initiate_graph(1, 2)
                     util.plot_multi_graph(axis, 0, 0, epochs, losses, labels,
-                                          "MNIST - Row by Row\nLSTM Autoencoder Models - Loss", "epoch",
+                                          "MNIST - Pixel by Pixel\nLSTM Autoencoder Models - Loss", "epoch",
                                           "loss", 1)
                     util.plot_multi_graph(axis, 1, 0, epochs, accuracies, labels,
-                                          "MNIST - Row by Row\nLSTM Autoencoder Models - Accuracy", "epoch",
+                                          "MNIST - Pixel by Pixel\nLSTM Autoencoder Models - Accuracy", "epoch",
                                           "accuracy", 1)
                     plt.show()
                     if loss < best_loss:
@@ -164,7 +164,7 @@ def grid_search(set):
 
 # Todo: Testing = Taking the RMSE?
 def test_model(model, testset):
-    convertor = lambda x: reshape_row_by_row(x, 1000)
+    convertor = lambda x: reshape_pixel_by_pixel(x, 1000)
     eval_train_loader = DataLoader(testset, batch_size=1000, shuffle=False)
     model.eval()  # Change flag in parent model from true to false (train-flag).
     size = len(testset)
@@ -194,7 +194,7 @@ transform = transforms.Compose(
 trainset = torchvision.datasets.MNIST('./data', train=True, download=True, transform=transform)
 testset = torchvision.datasets.MNIST('./data', train=False, download=True, transform=transform)
 
-# grid_search()
+# grid_search(trainset)
 # model = torch.load("saved_models/mnist_task/ae_mnist_Adam_lr=0.01_hidden_size=30_gradient_clipping=None_batch_size32_epoch2_best_epoch1_best_loss310.1443293467164_isreconstructTrue.pt")
 # trainloader = torch.utils.data.DataLoader(trainset, batch_size=1, shuffle=True)
 # for i, (data, target) in enumerate(trainloader):
@@ -207,20 +207,23 @@ testset = torchvision.datasets.MNIST('./data', train=False, download=True, trans
 
 # grid_search(trainset)
 
-
-model = torch.load('saved_models/mnist_task/ae_mnist_Adam_lr=0.001_hidden_size=50_gradient_clipping=None_batch_size120_epoch100_best_epoch99_best_loss37.803214497864246_isreconstructFalse.pt')
+"""
+model = torch.load('saved_models/mnist_task/ae_mnist_Adam_lr=0.003_hidden_size=30_gradient_clipping=2_batch_size120_epoch5_best_epoch3_best_loss1340.7938771247864_isreconstructFalse_pbp.pt')
 
 trainloader = torch.utils.data.DataLoader(testset, batch_size=1, shuffle=True)
 model.train(False)
 for i, (data, target) in enumerate(trainloader):
-    if i == 510:
+    # if i == 890:
+    if i == 600:
         imshow(data[0])
-        data = reshape_row_by_row(data, 1)
+        data = reshape_pixel_by_pixel(data, 1)
         new_data, cls = model(data)
         x = torch.tensor(np.argmax(cls.detach().numpy(), axis=1))
         print(x)
-        imshow(new_data.detach().numpy())
+        re = new_data.view(1,28,28)
+        imshow(re.detach().numpy())
         break
 
 
-# print(f'Test Set accuracy: {test_model(model, testset)}')
+print(f'Test Set accuracy: {test_model(model, testset)}')
+"""
