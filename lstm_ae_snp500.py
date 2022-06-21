@@ -338,17 +338,9 @@ def multi_step_prediction(model):
     plt.show()
 
     print("done")
-
-
 # plot_google_amazon_high_stocks()
 
 
-# model = torch.load(
-#     "saved_models/snp500/ae_snp500_pred_Adam_lr=0.002_hidden_size=300_gradient_clipping=3_batch_size10_epoch100_validation_loss_0.097300224006176.pt")
-# check_some_ts(model)
-
-# model = torch.load("saved_models/snp500/ae_snp500_pred_Adam_lr=0.002_hidden_size=300_gradient_clipping=3_batch_size4_epoch60_validation_loss_0.12832608819007874.pt")
-# check_some_ts(model)
 
 # Get data
 
@@ -390,15 +382,13 @@ testset = torch.tensor(test, dtype=torch.float32).view(len(test), len(test[0]), 
 
 
 # grid_search()
-model = torch.load("saved_models/snp500/ae_snp500_pred_Adam_lr=0.002_hidden_size=300_gradient_clipping=3_batch_size10_epoch100_validation_loss_0.097300224006176.pt")
+model = torch.load("saved_models/snp500/ae_snp500_pred_Adam_lr=0.001_hidden_size=120_gradient_clipping=1_batch_size10_epoch299_validation_loss_0.09807705879211426.pt")
 check_some_ts(model)
 
-# model = torch.load("saved_models/snp500/ae_snp500_pred_Adam_lr=0.002_hidden_size=300_gradient_clipping=3_batch_size4_epoch60_validation_loss_0.12832608819007874.pt")
-# check_some_ts(model)
 
 
 """def plot_orig_and_reconstructed(model, ind):
-=======
+
 trainset = torch.tensor(train, dtype=torch.float32).view(len(train), len(train[0]),
                                                          1)  # Tensor of shape: (batch_size, seq_len, input_len) = (int(477*0.8), 1007, 1)
 validationset = torch.tensor(validation, dtype=torch.float32).view(len(validation), len(validation[0]),
@@ -409,8 +399,18 @@ testset = torch.tensor(test, dtype=torch.float32).view(len(test), len(test[0]),
 grid_search()
 """
 # multi_step_prediction(model)
-check_some_ts(model)
+# check_some_ts(model)
 
+
+
+# model = torch.load("saved_models/snp500/ae_snp500_pred_Adam_lr=0.002_hidden_size=300_gradient_clipping=3_batch_size10_epoch100_validation_loss_0.097300224006176.pt")
+# check_some_ts(model)
+
+# model = torch.load("saved_models/snp500/ae_snp500_pred_Adam_lr=0.002_hidden_size=300_gradient_clipping=3_batch_size4_epoch60_validation_loss_0.12832608819007874.pt")
+# check_some_ts(model)
+
+
+"""
 def plot_orig_and_reconstructed(model, ind):
     ts = orig_tss[ind, :]
     ts = np.array(ts)
