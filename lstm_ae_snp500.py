@@ -383,7 +383,8 @@ testset = torch.tensor(test, dtype=torch.float32).view(len(test), len(test[0]), 
 
 # grid_search()
 model = torch.load("saved_models/snp500/ae_snp500_pred_Adam_lr=0.001_hidden_size=120_gradient_clipping=1_batch_size10_epoch299_validation_loss_0.09807705879211426.pt")
-check_some_ts(model)
+# check_some_ts(model)
+multi_step_prediction(model)
 
 
 
