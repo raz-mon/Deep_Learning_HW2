@@ -8,7 +8,6 @@ import numpy as np
 from syn_dat_gen import generate_synth_data
 import matplotlib.pyplot as plt
 from pathlib import Path
-import util
 
 
 def set_seed(seed):
@@ -44,7 +43,7 @@ class LSTM_AE(nn.Module):
         return out
 
 
-def train_AE(lr: float, batch_size: int, epochs: int, hidden_size, clip = None):
+def train_AE(lr: float, batch_size: int, epochs: int, hidden_size, clip: bool = None):
     trainloader = DataLoader(trainset, batch_size=batch_size, shuffle=True)
     # trainloader = DataLoader(trainset, shuffle=True)
     model = LSTM_AE(1,
@@ -54,8 +53,6 @@ def train_AE(lr: float, batch_size: int, epochs: int, hidden_size, clip = None):
     total_loss = 0.0
     best_loss = float('inf')
     best_epoch = 0
-    loss = 0
-    losses = []
     for epoch in range(epochs):
         total_loss = 0.0
 
@@ -74,7 +71,7 @@ def train_AE(lr: float, batch_size: int, epochs: int, hidden_size, clip = None):
         if best_loss > total_loss:
             best_loss = total_loss
             best_epoch = epoch
-        losses.append(float(loss))
+
     # save the model:
     file_name = f'ae_toy_{"Adam"}_lr={lr}_hidden_size={hidden_size}_gradient_clipping={clip}_batch_size{batch_size}' \
                 f'_epoch{epochs}_best_epoch{best_epoch}_best_loss{best_loss}'
@@ -83,7 +80,7 @@ def train_AE(lr: float, batch_size: int, epochs: int, hidden_size, clip = None):
     # create_folders(path)
     torch.save(model, os.path.join(path, file_name + '.pt'))
 
-    return losses, model, total_loss
+    return model, total_loss
 
 
 # Perform grid-search for the best hyper-parameters on the validation-set
@@ -91,29 +88,17 @@ def grid_search():
     counter = 0
     best_loss = float('inf')
     describe_model = None
-    epochs_x = [i for i in range(1, 431)]
-    losses = []
-    for hidden_state_size in [47]:
-        for lr in [1e-3]:
-            for batch_size in [6]:
-                for grad_clipping in [1]:
-                    epochs = 430
+    for hidden_state_size in [43]:
+        for lr in [2e-3]:
+            for batch_size in [8]:
+                for grad_clipping in [2]:
+                    epochs = 400
                     print(f'\n\n\nModel num: {counter}, h_s_size: {hidden_state_size}, lr: {lr}, b_size: {batch_size}, g_clip: {grad_clipping},'
                           f' epochs: {epochs}')
                     # counter += 1
                     # if counter < 43:
                     #     continue
-                    curr_losses, _, loss = train_AE(lr, batch_size, epochs, hidden_state_size, grad_clipping)
-
-                    losses.append(curr_losses)
-                    plt.rc("font", size=12, family="Times New Roman")
-                    plt.plot(epochs_x, curr_losses, label=f'h s: {hidden_state_size}, lr: {lr}, bt s: {batch_size}, clip: {grad_clipping}')
-                    plt.xlabel("epoch")
-                    plt.ylabel("loss")
-                    plt.title("Toy - LSTM Autoencoder Model")
-                    plt.legend()
-                    plt.show()
-
+                    _, loss = train_AE(lr, batch_size, epochs, hidden_state_size, grad_clipping)
                     if loss < best_loss:
                         best_loss = loss
                         describe_model = (counter, hidden_state_size, lr, batch_size, grad_clipping, loss)
@@ -146,11 +131,9 @@ def test_model(model):
 
 
 set_seed(0)
-trainset, validationset, testset = generate_synth_data(400, 50)  # Generate synthetic data.
+trainset, validationset, testset = generate_synth_data(10000, 50)  # Generate synthetic data.
 # grid_search()
 
-
-model = torch.load("saved_models/toy_task/ae_toy_Adam_lr=0.001_hidden_size=47_gradient_clipping=1_batch_size6_epoch430_best_epoch418_best_loss1.8480003140866756.pt")
 def check_some_ts(model):
     xs = np.arange(0, 50, 1)
     for ind in [0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900, 950, 1000]:
@@ -165,11 +148,13 @@ def check_some_ts(model):
         plt.ylabel('value')
         plt.title(f'Original and reconstructed signals - ind={ind}')
         plt.legend()
+        plt.ylim((-0.25, 1.25))
         plt.show()
+model = torch.load("saved_models/toy_task/ae_toy_Adam_lr=0.003_hidden_size=46_gradient_clipping=3_batch_size5_epoch150_best_epoch94_best_loss36.24036294594407.pt")
 check_some_ts(model)
 
-print(test_validation(model))
-print(test_model(model))
+# print(test_validation(model))
+# print(test_model(model))
 
 
 
