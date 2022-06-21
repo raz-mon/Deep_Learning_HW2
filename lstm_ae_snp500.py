@@ -92,6 +92,12 @@ def unnormalize_ts(ts, ind):
     return ret
 
 
+def unnormalize_ts_min_max(ts, min, max):
+    for i in range(len(ts)):
+        ts[i] = ts[i] * (max - min) + min
+    return ts
+
+
 def train_AE(lr, batch_size, epochs, hidden_size, clip=None, optimizer=None):
     trainLoader = DataLoader(trainset, batch_size=batch_size, shuffle=True)
     input_size = 1
@@ -130,7 +136,7 @@ def train_AE(lr, batch_size, epochs, hidden_size, clip=None, optimizer=None):
         pred_loss += [curr_loss_pred]
         print(f'epoch {epoch}, loss: {total_loss[-1]}')
 
-        if not (epoch+1) % 300:
+        if not (epoch + 1) % 300:
             savefigs(rec_loss, pred_loss, hidden_size, lr, batch_size, clip, epoch)
 
             # save the model:
@@ -320,14 +326,19 @@ def multi_step_prediction(model):
     ts = google_stocks['high'].values
     dates = pd.to_datetime(google_stocks['date'])
 
-    past_ts = torch.tensor(ts[:len(ts) // 2], dtype=torch.float32).view(1, len(ts) // 2, 1)
+    ts2 = ts.copy()
+    mini = np.min(list(ts2))
+    maxi = np.max(list(ts2))
+    ts2 = min_max_norm(ts2, mini, maxi)
+    past_ts = torch.tensor(ts2[:len(ts2) // 2], dtype=torch.float32).view(1, len(ts2) // 2, 1)
     # pred_ts = torch.tensor(ts[len(ts) // 2:], dtype=torch.float32).view(1, len(ts) // 2, 1)
     # for i in range(len(ts) // 2):
-    for i in range(40):
+    for i in range(503):
         print(i)
         _, past_ts = model(past_ts)
 
     temp = list(past_ts.view(len(ts) // 2, 1).detach().numpy().T[0])
+    temp = unnormalize_ts_min_max(temp, np.min(ts[len(ts) // 2:]), np.max(ts[len(ts) // 2:]))
 
     _, axis1 = plt.subplots(1, 1)
     axis1.plot(list(dates), list(ts), label="google")
@@ -338,8 +349,9 @@ def multi_step_prediction(model):
     plt.show()
 
     print("done")
-# plot_google_amazon_high_stocks()
 
+
+# plot_google_amazon_high_stocks()
 
 
 # Get data
@@ -370,9 +382,12 @@ validation_limit = int(len(tss) * 0.8)
 train = tss[:train_limit, :]
 validation = tss[train_limit:validation_limit, :]
 test = tss[validation_limit:, :]
-trainset = torch.tensor(train, dtype=torch.float32).view(len(train), len(train[0]), 1)  # Tensor of shape: (batch_size, seq_len, input_len) = (int(477*0.8), 1007, 1)
-validationset = torch.tensor(validation, dtype=torch.float32).view(len(validation), len(validation[0]), 1)  # Tensor of shape: (batch_size, seq_len, input_len) = (int(477*0.2), 1007, 1)
-testset = torch.tensor(test, dtype=torch.float32).view(len(test), len(test[0]), 1)  # Tensor of shape (approximately here): (batch_size, seq_len, input_len) = (int(477*0.2), 1007, 1)
+trainset = torch.tensor(train, dtype=torch.float32).view(len(train), len(train[0]),
+                                                         1)  # Tensor of shape: (batch_size, seq_len, input_len) = (int(477*0.8), 1007, 1)
+validationset = torch.tensor(validation, dtype=torch.float32).view(len(validation), len(validation[0]),
+                                                                   1)  # Tensor of shape: (batch_size, seq_len, input_len) = (int(477*0.2), 1007, 1)
+testset = torch.tensor(test, dtype=torch.float32).view(len(test), len(test[0]),
+                                                       1)  # Tensor of shape (approximately here): (batch_size, seq_len, input_len) = (int(477*0.2), 1007, 1)
 
 # grid_search()
 # model = torch.load(
@@ -382,10 +397,10 @@ testset = torch.tensor(test, dtype=torch.float32).view(len(test), len(test[0]), 
 
 
 # grid_search()
-model = torch.load("saved_models/snp500/ae_snp500_pred_Adam_lr=0.001_hidden_size=120_gradient_clipping=1_batch_size10_epoch299_validation_loss_0.09807705879211426.pt")
-check_some_ts(model)
-
-
+model = torch.load(
+    "saved_models/snp500/ae_snp500_pred_Adam_lr=0.001_hidden_size=120_gradient_clipping=1_batch_size10_epoch1199_validation_loss_0.02652263641357422.pt")
+# check_some_ts(model)
+multi_step_prediction(model)
 
 """def plot_orig_and_reconstructed(model, ind):
 
@@ -400,7 +415,6 @@ grid_search()
 """
 # multi_step_prediction(model)
 # check_some_ts(model)
-
 
 
 # model = torch.load("saved_models/snp500/ae_snp500_pred_Adam_lr=0.002_hidden_size=300_gradient_clipping=3_batch_size10_epoch100_validation_loss_0.097300224006176.pt")
