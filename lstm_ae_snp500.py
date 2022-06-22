@@ -250,7 +250,7 @@ def check_some_ts(model):
         df2.index = df2['date']
         df['ys_orig'].plot(label='orig')
         df['ys_rec'].plot(label='rec')
-        df2['ys_pred'].plot(label='pred')
+        # df2['ys_pred'].plot(label='pred')
         # plt.title(f'Original and reconstructed signals - ind={ind}')
         plt.title(f'Original, reconstructed and predicted signals - ind={ind}')
         plt.ylabel('value')
@@ -398,7 +398,7 @@ testset = torch.tensor(test, dtype=torch.float32).view(len(test), len(test[0]),
 
 # grid_search()
 model = torch.load(
-    "saved_models/snp500/ae_snp500_pred_Adam_lr=0.001_hidden_size=120_gradient_clipping=1_batch_size10_epoch1199_validation_loss_0.02652263641357422.pt")
+    "saved_models/snp500/ae_snp500_pred_Adam_lr=0.001_hidden_size=120_gradient_clipping=1_batch_size10_epoch2699_validation_loss_0.0297817625105381.pt")
 # check_some_ts(model)
 multi_step_prediction(model)
 
