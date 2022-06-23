@@ -342,7 +342,7 @@ def multi_step_prediction(model):
 
     _, axis1 = plt.subplots(1, 1)
     axis1.plot(list(dates), list(ts), label="google")
-    axis1.plot(list(dates), [0] * (len(ts) // 2 + 1) + temp, label="prediction")
+    axis1.plot(list(dates), list(ts[:len(ts) // 2 + 1]) + temp, label="prediction")
     plt.xticks(rotation=30)
     plt.title("google max stock values, years 2014-2017")
     plt.legend()
