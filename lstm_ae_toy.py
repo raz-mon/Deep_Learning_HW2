@@ -53,6 +53,7 @@ def train_AE(lr: float, batch_size: int, epochs: int, hidden_size, clip: bool = 
     total_loss = 0.0
     best_loss = float('inf')
     best_epoch = 0
+    l = []
     for epoch in range(epochs):
         total_loss = 0.0
 
@@ -65,6 +66,7 @@ def train_AE(lr: float, batch_size: int, epochs: int, hidden_size, clip: bool = 
             if clip is not None:
                 clip_grad_norm_(model.parameters(), max_norm=clip)
             opt.step()
+        l += [total_loss]
 
         print(f'epoch {epoch}, loss: {total_loss}')
         # Todo: How do we learn from validation data? By performing the grid-search below?
@@ -80,7 +82,18 @@ def train_AE(lr: float, batch_size: int, epochs: int, hidden_size, clip: bool = 
     # create_folders(path)
     torch.save(model, os.path.join(path, file_name + '.pt'))
 
-    return model, total_loss
+    # return model, total_loss
+    return model, l
+
+
+def save_plot_loss_vs_epochs(loss, batch_size, epochs, hidden_state_size, grad_clipping):
+    plt.figure()
+    plt.plot(np.arange(0, len(loss), 1), loss)
+    plt.xlabel('epoch')
+    plt.ylabel('loss')
+    plt.title('loss vs. epoch')
+    plt.savefig(f'figures/Part1/loss_vs_epochs_toy_bsize_{batch_size}_epochs_{epochs}_hidden_state_size_'
+                f'{hidden_state_size}_g_clip{grad_clipping}')
 
 
 # Perform grid-search for the best hyper-parameters on the validation-set
@@ -89,19 +102,20 @@ def grid_search():
     best_loss = float('inf')
     describe_model = None
     for hidden_state_size in [43]:
-        for lr in [2e-3]:
+        for lr in [1e-3]:
             for batch_size in [8]:
-                for grad_clipping in [2]:
-                    epochs = 400
+                for grad_clipping in [1]:
+                    epochs = 2500
                     print(f'\n\n\nModel num: {counter}, h_s_size: {hidden_state_size}, lr: {lr}, b_size: {batch_size}, g_clip: {grad_clipping},'
                           f' epochs: {epochs}')
                     # counter += 1
                     # if counter < 43:
                     #     continue
                     _, loss = train_AE(lr, batch_size, epochs, hidden_state_size, grad_clipping)
-                    if loss < best_loss:
-                        best_loss = loss
-                        describe_model = (counter, hidden_state_size, lr, batch_size, grad_clipping, loss)
+                    if loss[-1] < best_loss:
+                        best_loss = loss[-1]
+                        describe_model = (counter, hidden_state_size, lr, batch_size, grad_clipping, loss[-1])
+                    save_plot_loss_vs_epochs(loss, batch_size, epochs, hidden_state_size, grad_clipping)
     print("best model {} params:\nhidden state: {}\nlearning state: {}\nbatch size: {}\ngrad clipping: {}\nloss: {}".format(*describe_model))
 
 
@@ -150,13 +164,18 @@ def check_some_ts(model):
         plt.legend()
         plt.ylim((-0.25, 1.25))
         plt.show()
-model = torch.load("saved_models/toy_task/ae_toy_Adam_lr=0.003_hidden_size=46_gradient_clipping=3_batch_size5_epoch150_best_epoch94_best_loss36.24036294594407.pt")
+model = torch.load("saved_models/toy_task/ae_toy_Adam_lr=0.001_hidden_size=43_gradient_clipping=1_batch_size8_epoch2500_best_epoch1448_best_loss0.7761205772403628.pt")
 check_some_ts(model)
+
+
+
+
+
+
+
 
 # print(test_validation(model))
 # print(test_model(model))
-
-
 
 # model = train_AE(1e-3, 30, 20)
 # test_model(model)
