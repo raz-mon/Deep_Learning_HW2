@@ -12,7 +12,7 @@ def set_seed(seed):
 
 
 def initiate_graph(row, col):
-    plt.rc("font", size=12, family="Times New Roman")
+    plt.rc("font", size=18, family="Times New Roman")
     figure, axis = plt.subplots(row, col)
     figure.set_figheight(8)
     figure.set_figwidth(16)

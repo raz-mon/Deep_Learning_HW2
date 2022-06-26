@@ -5,6 +5,8 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torch.nn.utils import clip_grad_norm_
 import numpy as np
+
+import syn_dat_gen
 from syn_dat_gen import generate_synth_data
 import matplotlib.pyplot as plt
 from pathlib import Path
@@ -43,7 +45,7 @@ class LSTM_AE(nn.Module):
         return out
 
 
-def train_AE(lr: float, batch_size: int, epochs: int, hidden_size, clip: bool = None):
+def train_AE(lr: float, batch_size: int, epochs: int, hidden_size, clip):
     trainloader = DataLoader(trainset, batch_size=batch_size, shuffle=True)
     # trainloader = DataLoader(trainset, shuffle=True)
     model = LSTM_AE(1,
@@ -88,13 +90,14 @@ def grid_search():
     counter = 0
     best_loss = float('inf')
     describe_model = None
-    for hidden_state_size in [43]:
-        for lr in [2e-3]:
-            for batch_size in [8]:
-                for grad_clipping in [2]:
+    for hidden_state_size in [46]:
+        for lr in [3e-3]:
+            for batch_size in [5]:
+                for grad_clipping in [10]:
                     epochs = 400
-                    print(f'\n\n\nModel num: {counter}, h_s_size: {hidden_state_size}, lr: {lr}, b_size: {batch_size}, g_clip: {grad_clipping},'
-                          f' epochs: {epochs}')
+                    print(
+                        f'\n\n\nModel num: {counter}, h_s_size: {hidden_state_size}, lr: {lr}, b_size: {batch_size}, g_clip: {grad_clipping},'
+                        f' epochs: {epochs}')
                     # counter += 1
                     # if counter < 43:
                     #     continue
@@ -102,7 +105,9 @@ def grid_search():
                     if loss < best_loss:
                         best_loss = loss
                         describe_model = (counter, hidden_state_size, lr, batch_size, grad_clipping, loss)
-    print("best model {} params:\nhidden state: {}\nlearning state: {}\nbatch size: {}\ngrad clipping: {}\nloss: {}".format(*describe_model))
+    print(
+        "best model {} params:\nhidden state: {}\nlearning state: {}\nbatch size: {}\ngrad clipping: {}\nloss: {}".format(
+            *describe_model))
 
 
 def test_validation(model, batch_size=None):
@@ -130,9 +135,7 @@ def test_model(model):
 
 
 
-set_seed(0)
-trainset, validationset, testset = generate_synth_data(10000, 50)  # Generate synthetic data.
-# grid_search()
+
 
 def check_some_ts(model):
     xs = np.arange(0, 50, 1)
@@ -150,29 +153,40 @@ def check_some_ts(model):
         plt.legend()
         plt.ylim((-0.25, 1.25))
         plt.show()
-model = torch.load("saved_models/toy_task/ae_toy_Adam_lr=0.003_hidden_size=46_gradient_clipping=3_batch_size5_epoch150_best_epoch94_best_loss36.24036294594407.pt")
-check_some_ts(model)
+
+
+def print_reconstruct():
+    for i in [1,5,10,100,200,350,450,550,563]:
+        xs = np.arange(0, 50, 1)
+        ys1 = testset[i, :, :]
+        model.eval()
+        ys2 = model(ys1).view(50).detach().numpy()
+        plt.plot(xs, ys1.view(50).detach().numpy(), label='orig')
+        plt.plot(xs, ys2, label='rec')
+        plt.legend()
+        plt.title('original and reconstructed signal')
+        plt.show()
+
+
+# model = torch.load(
+#     "saved_models/toy_task/ae_toy_Adam_lr=0.003_hidden_size=46_gradient_clipping=10_batch_size5_epoch400_best_epoch246_best_loss1.7050432766554877.pt")
+
+# set_seed(0)
+# trainset, validationset, testset = generate_synth_data(10000, 50)  # Generate synthetic data.
+# grid_search()
+
+# check_some_ts(model)
 
 # print(test_validation(model))
 # print(test_model(model))
+# print_reconstruct()
 
-
+syn_dat_gen.generate_and_plot()
 
 # model = train_AE(1e-3, 30, 20)
 # test_model(model)
-#model = torch.load("saved_models/toy_task/ae_toy_Adam_lr=0.01_hidden_size=30__gradient_clipping=0.9_batch_size64_epoch=600.pt")
+# model = torch.load("saved_models/toy_task/ae_toy_Adam_lr=0.01_hidden_size=30__gradient_clipping=0.9_batch_size64_epoch=600.pt")
 # print a ts and a reconstruction of it.
-"""
-xs = np.arange(0, 50, 1)
-ys1 = testset[100, :, :]
-model.eval()
-ys2 = model(ys1).view(50).detach().numpy()
-plt.plot(xs, ys1.view(50).detach().numpy(), label='orig')
-plt.plot(xs, ys2, label='rec')
-plt.legend()
-plt.title('original and reconstructed signal')
-plt.show()
-"""
 
 
 """

@@ -254,6 +254,7 @@ def check_some_ts(model):
         # plt.title(f'Original and reconstructed signals - ind={ind}')
         plt.title(f'Original, reconstructed and predicted signals - ind={ind}')
         plt.ylabel('value')
+        plt.xlabel('date')
         plt.xticks(rotation=5)
         plt.legend()
         plt.show()
@@ -341,6 +342,8 @@ def multi_step_prediction(model):
     temp = unnormalize_ts_min_max(temp, np.min(ts[len(ts) // 2:]), np.max(ts[len(ts) // 2:]))
 
     _, axis1 = plt.subplots(1, 1)
+    axis1.set_xlabel("date")
+    axis1.set_ylabel("value")
     axis1.plot(list(dates), list(ts), label="google")
     axis1.plot(list(dates), list(ts[:len(ts) // 2 + 1]) + temp, label="prediction")
     plt.xticks(rotation=30)
