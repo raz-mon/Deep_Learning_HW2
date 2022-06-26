@@ -5,7 +5,6 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torch.nn.utils import clip_grad_norm_
 import numpy as np
-
 import syn_dat_gen
 from syn_dat_gen import generate_synth_data
 import matplotlib.pyplot as plt
@@ -83,7 +82,6 @@ def train_AE(lr: float, batch_size: int, epochs: int, hidden_size, clip):
     # create_folders(path)
     torch.save(model, os.path.join(path, file_name + '.pt'))
 
-    # return model, total_loss
     return model, l
 
 
@@ -102,10 +100,10 @@ def grid_search():
     counter = 0
     best_loss = float('inf')
     describe_model = None
-    for hidden_state_size in [43]:
-        for lr in [1e-3]:
-            for batch_size in [8]:
-                for grad_clipping in [1]:
+    for hidden_state_size in [20, 30, 40]:
+        for lr in [1e-3, 2e-3, 5e-3]:
+            for batch_size in [4, 8, 15, 50]:
+                for grad_clipping in [0.8, 1, 1.2, 5]:
                     epochs = 2500
                     print(f'\n\n\nModel num: {counter}, h_s_size: {hidden_state_size}, lr: {lr}, b_size: {batch_size}, g_clip: {grad_clipping},'
                           f' epochs: {epochs}')
@@ -119,7 +117,6 @@ def grid_search():
                         describe_model = (counter, hidden_state_size, lr, batch_size, grad_clipping, loss[-1])
                     save_plot_loss_vs_epochs(loss, batch_size, epochs, hidden_state_size, grad_clipping)
     print("best model {} params:\nhidden state: {}\nlearning state: {}\nbatch size: {}\ngrad clipping: {}\nloss: {}".format(*describe_model))
-
 
 
 def test_validation(model, batch_size=None):
@@ -146,7 +143,6 @@ def test_model(model):
     return total_loss
 
 
-
 def check_some_ts(model):
     xs = np.arange(0, 50, 1)
     for ind in [0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900, 950, 1000]:
@@ -163,11 +159,6 @@ def check_some_ts(model):
         plt.legend()
         plt.ylim((-0.25, 1.25))
         plt.show()
-
-# model = torch.load("saved_models/toy_task/ae_toy_Adam_lr=0.001_hidden_size=43_gradient_clipping=1_batch_size8_epoch2500_best_epoch1448_best_loss0.7761205772403628.pt")
-# check_some_ts(model)
-
-
 
 
 def print_reconstruct(model):

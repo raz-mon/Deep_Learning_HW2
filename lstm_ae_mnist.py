@@ -6,7 +6,6 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torch.nn.utils import clip_grad_norm
 import numpy as np
-
 import util
 from syn_dat_gen import generate_synth_data
 import matplotlib.pyplot as plt
@@ -176,7 +175,6 @@ def test_model(model, testset):
         temp1 = np.argmax(output_classify.detach().numpy(), axis=1)
         temp2 = target.detach().numpy()
         accuracy += sum(temp1 == temp2)
-
     return accuracy / size
 
 

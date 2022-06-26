@@ -14,7 +14,7 @@ def set_seed(seed):
     torch.backends.cudnn.benchmark = False
     torch.manual_seed(seed)
     np.random.seed(seed)
-set_seed(0)
+
 
 class LSTM_ae_snp500(nn.Module):
     def __init__(self, input_size, hidden_size):
@@ -246,17 +246,21 @@ def check_some_ts(model):
         plt.legend()
         plt.show()
 
+# Set random seed to 0.
+set_seed(0)
 
+# Plot GOOGL and AMZN stocks from the data-set
+"""plot_google_amazon_high_stocks()"""
 
+# Perform a grid-search for the best hyper-parameters
+"""grid_search()"""
 
-# plot_google_amazon_high_stocks()
-grid_search()
-
-# model = torch.load("saved_models/snp500/ae_snp500_Adam_lr=0.002_hidden_size=100_gradient_clipping=0.9_batch_size50_epoch40_validation_loss_0.06462101638317108.pt")
-# check_some_ts(model)
+# Load a model, and plot some of the reconstructions with the original signals to check how your model is doing
+"""
+model = torch.load("saved_models/snp500/ae_snp500_Adam_lr=0.002_hidden_size=100_gradient_clipping=0.9_batch_size50_epoch40_validation_loss_0.06462101638317108.pt")
+check_some_ts(model)
 # print(test_train(model))
-# check_some_ts(model)
-
+"""
 
 
 """def plot_orig_and_reconstructed(model, ind):

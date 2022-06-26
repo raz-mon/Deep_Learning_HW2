@@ -1,11 +1,4 @@
-Todo:
- - Change part1 so the validation data will be used to configure the hyper-parameters (grid-search).
- - Part 3: Pre-process the data: Delete missing valued series, normalize and center, make sure all same length.
- -
-
-
-
-
+Done!!
 
 
 

@@ -6,7 +6,6 @@ import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-
 import util
 
 
@@ -16,9 +15,6 @@ def set_seed(seed):
     torch.backends.cudnn.benchmark = False
     torch.manual_seed(seed)
     np.random.seed(seed)
-
-
-set_seed(0)
 
 
 class LSTM_ae_snp500(nn.Module):
@@ -281,7 +277,7 @@ def check_some_ts(model):
         plt.legend()
         plt.show()"""
 
-"""
+
 def savefigs(rec_loss, pred_loss, hidden_state_size, lr, batch_size, grad_clipping, epochs):
     xs = [i for i in range(epochs)]
     plt.figure()
@@ -303,7 +299,7 @@ def savefigs(rec_loss, pred_loss, hidden_state_size, lr, batch_size, grad_clippi
         f'figures/Part3/pred_epochs_hidden_{hidden_state_size}_lr_{lr}_batchSize_{batch_size}_gradClip_{grad_clipping}_epochs_{epochs}.png')
 
     # plt.show()
-"""
+
 
 
 def savefigs(rec_loss, pred_loss, hidden_state_size, lr, batch_size, grad_clipping, epochs):
@@ -353,12 +349,13 @@ def multi_step_prediction(model):
 
     print("done")
 
+# Plot the stocks of GOOGL and AMZN.
+"""plot_google_amazon_high_stocks()"""
 
-# plot_google_amazon_high_stocks()
-
+# Set the random seed.
+set_seed(0)
 
 # Get data
-
 data = pd.read_csv('snp500_data/SP 500 Stock Prices 2014-2017.csv')
 data = data[['symbol', 'high']]
 names = data['symbol'].unique()
@@ -392,24 +389,42 @@ validationset = torch.tensor(validation, dtype=torch.float32).view(len(validatio
 testset = torch.tensor(test, dtype=torch.float32).view(len(test), len(test[0]),
                                                        1)  # Tensor of shape (approximately here): (batch_size, seq_len, input_len) = (int(477*0.2), 1007, 1)
 
-# grid_search()
-# model = torch.load(
-#     "saved_models/snp500/ae_snp500_pred_Adam_lr=0.002_hidden_size=300_gradient_clipping=3_batch_size10_epoch100_validation_loss_0.097300224006176.pt")
-# multi_step_prediction(model)
-# check_some_ts(model)
+# Perfom a grid-search for the best hyper-parameters
+"""grid_search()"""
 
-
-# grid_search()
-
-# model = torch.load("saved_models/snp500/ae_snp500_pred_Adam_lr=0.001_hidden_size=120_gradient_clipping=1_batch_size10_epoch299_validation_loss_0.09807705879211426.pt")
-# check_some_ts(model)
-# multi_step_prediction(model)
-
-
+# Load a model, perform prediction, and plot some of the reconstrucion outputs.
+"""
 model = torch.load(
-    "saved_models/snp500/ae_snp500_pred_Adam_lr=0.001_hidden_size=120_gradient_clipping=1_batch_size10_epoch2699_validation_loss_0.0297817625105381.pt")
-# check_some_ts(model)
+    "saved_models/snp500/ae_snp500_pred_Adam_lr=0.002_hidden_size=300_gradient_clipping=3_batch_size10_epoch100_validation_loss_0.097300224006176.pt")
 multi_step_prediction(model)
+check_some_ts(model)
+"""
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -424,15 +439,7 @@ testset = torch.tensor(test, dtype=torch.float32).view(len(test), len(test[0]),
 
 grid_search()
 """
-# multi_step_prediction(model)
-# check_some_ts(model)
 
-
-# model = torch.load("saved_models/snp500/ae_snp500_pred_Adam_lr=0.002_hidden_size=300_gradient_clipping=3_batch_size10_epoch100_validation_loss_0.097300224006176.pt")
-# check_some_ts(model)
-
-# model = torch.load("saved_models/snp500/ae_snp500_pred_Adam_lr=0.002_hidden_size=300_gradient_clipping=3_batch_size4_epoch60_validation_loss_0.12832608819007874.pt")
-# check_some_ts(model)
 
 
 """

@@ -22,7 +22,6 @@ def generate_synth_data(N, T, bach_size=100):
 
     # data = torch.tensor(rand_arrs).view(len(rand_arrs), len(rand_arrs[0]), 1)
     data = rand_arrs
-    # Todo: Make sure data is centered and normalized.
 
     train = torch.tensor(data[:int(N * 0.6), :]).float()
     validation = torch.tensor(data[int(N * 0.6):int(N * 0.8), :]).float()
@@ -32,6 +31,7 @@ def generate_synth_data(N, T, bach_size=100):
 
 
 def generate_and_plot():
+    """Plot 3 examples of the generated data-set."""
     np.random.seed(0)  # Constant seed -> Constant results.
     rand_arrs = np.random.rand(10000, 50)  # Generate random arrays.
     for arr in rand_arrs:
