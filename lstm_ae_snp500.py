@@ -250,10 +250,11 @@ def check_some_ts(model):
         df2.index = df2['date']
         df['ys_orig'].plot(label='orig')
         df['ys_rec'].plot(label='rec')
-        df2['ys_pred'].plot(label='pred')
+        # df2['ys_pred'].plot(label='pred')
         # plt.title(f'Original and reconstructed signals - ind={ind}')
         plt.title(f'Original, reconstructed and predicted signals - ind={ind}')
         plt.ylabel('value')
+        plt.xlabel('date')
         plt.xticks(rotation=5)
         plt.legend()
         plt.show()
@@ -341,8 +342,10 @@ def multi_step_prediction(model):
     temp = unnormalize_ts_min_max(temp, np.min(ts[len(ts) // 2:]), np.max(ts[len(ts) // 2:]))
 
     _, axis1 = plt.subplots(1, 1)
+    axis1.set_xlabel("date")
+    axis1.set_ylabel("value")
     axis1.plot(list(dates), list(ts), label="google")
-    axis1.plot(list(dates), [0] * (len(ts) // 2 + 1) + temp, label="prediction")
+    axis1.plot(list(dates), list(ts[:len(ts) // 2 + 1]) + temp, label="prediction")
     plt.xticks(rotation=30)
     plt.title("google max stock values, years 2014-2017")
     plt.legend()
@@ -404,7 +407,7 @@ testset = torch.tensor(test, dtype=torch.float32).view(len(test), len(test[0]),
 
 
 model = torch.load(
-    "saved_models/snp500/ae_snp500_pred_Adam_lr=0.001_hidden_size=120_gradient_clipping=1_batch_size10_epoch1199_validation_loss_0.02652263641357422.pt")
+    "saved_models/snp500/ae_snp500_pred_Adam_lr=0.001_hidden_size=120_gradient_clipping=1_batch_size10_epoch2699_validation_loss_0.0297817625105381.pt")
 # check_some_ts(model)
 multi_step_prediction(model)
 
